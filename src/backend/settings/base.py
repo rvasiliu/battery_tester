@@ -173,6 +173,14 @@ LOGGING = {
             'maxBytes': MAX_BYTES,
             'backupCount': BACKUP_COUNT,
         },
+        'inverter': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'verbose',
+            'filename': os.path.join(BASE_DIR, 'logs', 'inverter.log'),
+            'maxBytes': MAX_BYTES,
+            'backupCount': BACKUP_COUNT,
+        },
     },
     'loggers': {
         'django': {
