@@ -12,6 +12,28 @@ class Battery(models.Model):
 
     firmware_version = models.IntegerField(max_length = 10, blank=True, null=True)
     
+    dc_voltage = models.CharField(max_length = 10, blank=True, null=True)
+    dc_current = models.CharField(max_length = 10, blank=True, null=True)
+    
+    cv_1 = models.CharField(max_length = 10, blank=True, null=True)
+    cv_2 = models.CharField(max_length = 10, blank=True, null=True)
+    cv_3 = models.CharField(max_length = 10, blank=True, null=True)
+    cv_4 = models.CharField(max_length = 10, blank=True, null=True)
+    cv_5 = models.CharField(max_length = 10, blank=True, null=True)
+    cv_6 = models.CharField(max_length = 10, blank=True, null=True)
+    cv_7 = models.CharField(max_length = 10, blank=True, null=True)
+    cv_8 = models.CharField(max_length = 10, blank=True, null=True)
+    cv_9 = models.CharField(max_length = 10, blank=True, null=True)
+    
+    cv_min = models.CharField(max_length = 10, blank=True, null=True)
+    cv_max = models.CharField(max_length = 10, blank=True, null=True)
+    
+    mosfet_temp = models.CharField(max_length = 10, blank=True, null=True)
+    pack_temp = models.CharField(max_length = 10, blank=True, null=True)
+    
+    cell_overvoltage_level_1 = models.CharField(max_length = 10, blank=True, null=True)
+    cell_overvoltage_level_2 = models.CharField(max_length = 10, blank=True, null=True)
+    
     #port_handler = serial.Serial()
     
     def initialise_comms(self):
