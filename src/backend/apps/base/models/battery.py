@@ -74,7 +74,7 @@ class Battery(models.Model):
                      self.cv_2, self.cv_3, self.cv_4, self.cv_5, self.cv_6, self.cv_7, self.cv_8, self.cv_9)
             return True
         except:
-            log.info('Error encountered while updating pack values')
+            log.exception('Error encountered while updating pack values')
             return False
         
     
