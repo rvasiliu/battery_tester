@@ -1,0 +1,10 @@
+*.pyc
+*.log
+.idea/
+venv
+secrets.json
+secret.txt
+newrelic.ini
+node_modules/
+pidfiles/
+backend/assets/

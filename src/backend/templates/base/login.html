@@ -1,0 +1,77 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Page</title>
+    <link rel="stylesheet" href="{% static 'base/css/semantic.min.css' %}" type="text/css"/>
+    <style type="text/css">
+        body {
+            background-color: #DADADA;
+        }
+        body > .grid {
+            height: 100%;
+        }
+        .image {
+            margin-top: -100px;
+        }
+        .column {
+            max-width: 450px;
+        }
+    </style>
+</head>
+<body>
+    <div class="ui middle aligned center aligned grid">
+        <div class="column">
+            <form class="ui large form" method="post" action=".">
+            {% csrf_token %}
+                <div class="ui stacked segment">
+                    <div class="field">
+                        <div class="ui left icon input">
+                            <i class="user icon"></i>
+                            <input id="username" type="text" name="username" placeholder="username">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="ui left icon input">
+                            <i class="lock icon"></i>
+                            <input id="password" name="password" type="password" autocomplete="off" placeholder="password">
+                        </div>
+                    </div>
+                    <div id="submit" class="ui fluid large submit button">Login</div>
+                </div>
+                <input type="hidden" name="next" value="{{ next }}" />
+                <div class="ui error message">
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="{% static 'base/js/jquery-3.1.0.min.js' %}"></script>
+    <script src="{% static 'base/js/semantic.min.js' %}"></script>
+    <script>
+        $(document).ready(function() {
+            $('.ui.form').form({
+                fields: {
+                    username: {
+                        identifier  : 'username',
+                        rules: [{
+                            type   : 'empty',
+                            prompt : 'Please enter your username'
+                        }]
+                    },
+                    password: {
+                        identifier  : 'password',
+                        rules: [{
+                            type   : 'empty',
+                            prompt : 'Please enter your password'
+                        }]
+                    }
+                }
+            });
+        });
+        $('#username').focus();
+        {% if form.errors %}
+        $('.ui.form').form('add errors', ['Incorrect username/password combination']);
+        {% endif %}
+    </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load staticfiles %}
+{% load util_filters %}
+
+<head>
+    <meta charset="UTF-8">
+    {% block title %}
+    <title></title>
+    {% endblock title %}
+    {% block css %}
+    <link rel="icon" type="image/gif" href="{% static 'base/images/favicon.gif' %}"/>
+    <link rel="stylesheet" href="{% static 'base/css/semantic.min.css' %}" type="text/css"/>
+    <link rel="stylesheet" type="text/css" href="{% static 'base/css/daterangepicker.min.css' %}">
+    <!-- <link href="https://fonts.googleapis.com/css?family=Varela+Round" rel="stylesheet"> -->
+
+    <style>
+        html {
+            height: 100%;
+            width: 100%;
+        }
+
+        body {
+            height: 100%;
+            width: 100%;
+            /*font-family: 'Varela Round', sans-serif;*/
+            background: -webkit-radial-gradient(circle, rgba(237, 240, 242, 0.2), rgba(237, 240, 242, 1));
+        }
+
+        body > .ui.menu {
+            border-radius: 0px;
+        }
+
+        .full-height {
+            height: 100%;
+        }
+
+        #cgk-logo {
+            background: white;
+            padding: 0px 0px 0px 10px;
+            border-radius: 0px;
+            width: 145px;
+        }
+
+        #mon-content {
+            padding: 0px 50px;
+        }
+
+        .ui.horizontal.divider:after, .ui.horizontal.divider:before {
+            /* Hack for chrome version */
+            top: initial!important;
+        }
+    </style>
+    {% endblock css %}
+</head>
+<body>
+    <div class="ui menu">
+        <div id="cgk-logo" class="header item">
+            <a class="ui logo icon image" href="/">
+                <img src="{% static 'base/images/cgk-logo.png' %}">
+            </a>
+        </div>
+
+        <div class="ui dropdown simple item" tabindex="0">
+            Home<i class="dropdown icon"></i>
+            <div class="menu" tabindex="-1">
+                <a class="item" href="{% url 'base:home' %}">Home</a>
+            </div>
+        </div>
+
+
+        <div class="right menu">
+            <a class="item">Settings</a>
+            <a id="logout" href="{% url 'base:logout' %}" class="item">Logout</a>
+        </div>
+
+    </div>
+
+    <div class="ui main container fluid" style="height:92%">
+        <div id="wrapper" class="full-height">
+            <div id="mon-content" class="ui container fluid full-height">
+                {% block maincontent %}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+    {% block footer %}
+    {% endblock footer %}
+    {% block js %}
+        <script src="{% static 'base/js/jquery-3.1.0.min.js' %}"></script>
+        <script src="{% webpack_static 'dist/vendor.dist.js' %}"></script>
+        <script src="{% webpack_static 'dist/base.dist.js' %}"></script>
+    {% endblock %}
+</body>
+</html>

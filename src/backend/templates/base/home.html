@@ -1,0 +1,22 @@
+{% extends 'base/base.html' %}
+{% block title %}<title>MON starter project </title>{% endblock title %}
+{% block css %}
+    {{ block.super }}
+    <style>
+        .temp {
+            display: table;
+            width: 100%;
+        }
+
+        .temp > h1 {
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
+        }
+    </style>
+{% endblock css %}
+{% block maincontent %}
+<div class="temp full-height">
+    <h1 id="root">Hello!</h1>
+</div>
+{% endblock maincontent %}
