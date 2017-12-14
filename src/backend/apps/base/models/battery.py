@@ -33,7 +33,8 @@ class Battery(models.Model):
     
     cell_overvoltage_level_1 = models.CharField(max_length = 10, blank=True, null=True)
     cell_overvoltage_level_2 = models.CharField(max_length = 10, blank=True, null=True)
-    
+    cell_undervoltage_level_1 = models.CharField(max_length = 10, blank=True, null=True)
+    cell_undervoltage_level_2 = models.CharField(max_length = 10, blank=True, null=True)
     #port_handler = serial.Serial()
     
     def initialise_comms(self):
