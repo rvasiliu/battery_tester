@@ -8,3 +8,4 @@ newrelic.ini
 node_modules/
 pidfiles/
 backend/assets/
+backend/settings/local.py
