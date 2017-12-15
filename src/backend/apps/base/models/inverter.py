@@ -37,7 +37,8 @@ class Inverter(models.Model):
             time.sleep(0.1)
             self.ser_PU.write(A_command)
             time.sleep(0.1) 
-            return True
+            log.info('VE Bus configured.')
+            return True            
         except:
             log.exception('Exception encountered when initializing VE bus protocol')
             return False
@@ -75,8 +76,56 @@ class Inverter(models.Model):
             log.exception('Exception raised in setpoint message construction')
             return False
         
+    def request_DC_frame(self, comport_handle):
+        '''
+        Sends request for a DC frame on the VE bus
+        '''
+        try:
+            #self.thread_RX.start()  #Start monitoring messages from Power Unit
+            message = b'\x03\xffF\x00\xb8'
+            comport_handle.write(message)
+            log.info('DC frame Requested')
+            return True
+        except:
+            log.exception('Exception when requesting the DC frame - serial timeout perhaps?')
+            return False
     
+    def request_AC_frame(self, comport_handle):
+        '''
+        Sends request for AC frame on the VE bus
+        '''
+        try:
+            message = b'\x03\xffF\x01\xb7'
+            comport_handle.write(message)
+            log.info('AC frame Requested')
+            return True
+        except:
+            log.exception('Exception when requesting the AC frame - serial timeout perhaps?')
+            return False
     
+    def update_DC_frame(self, message, comport_handle):
+        '''
+        Updates the self.dc_current and self.dc_voltage variables.
+        '''
+        #self.thread_RX.stop()
+        try:
+        self.dc_voltage = int.from_bytes(message[7:9], byteorder = 'little')
+        self.dc_voltage = self.dc_voltage / 100
+        
+        charging_current = int.from_bytes(message[9:12], byteorder = 'little')
+        discharging_current = int.from_bytes(message[12:15], byteorder = 'little')
+        self.dc_current = charging_current + discharging_current
+        self.dc_current = self.dc_current/10
+        print(self.dc_voltage, self.dc_current)
+        pass
+    
+    def update_AC_frame(self, message):
+        self.ac_voltage = int.from_bytes(message[7:9], byteorder = 'little')/100
+        self.ac_current = ctypes.c_int16(int.from_bytes(message[9:11], byteorder = 'little'))
+        self.ac_current = self.ac_current.value/100
+        
+        print(self.ac_voltage, self.ac_current)
+        pass
 
 @receiver(post_save, sender=Inverter, dispatch_uid="add_task_dispatch")
 def add_task_dispatch(sender, instance, **kwargs):
