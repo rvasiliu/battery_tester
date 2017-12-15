@@ -1,12 +1,26 @@
 from django.db import models
-from django.dispatch import receiver
-from django.db.models.signals import pre_save, post_save
 
-from ..models import Inverter
 from ..log import log_inverter_pool as log
 
 
 class InverterPool(models.Model):
-    inverter = models.ForeignKey(Inverter, blank=True, null=True)
-    available = models.IntegerField(blank=True, null=True)
-    
+
+    @property
+    def nr_available_inverters(self):
+        return len([inv for inv in self.inverters.all() if inv.state == 'FREE'])
+
+    @property
+    def available_inverters(self):
+        """
+        Property to get available inverters
+        :return: a list of available inverters
+        """
+        return [inv for inv in self.inverters.all() if inv.state == 'FREE']
+
+    @property
+    def inverters_state(self):
+        """
+        get states for all the inverters in the pool
+        :return: list of states
+        """
+        return [inv.state for inv in self.inverters.all()]

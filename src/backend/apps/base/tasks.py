@@ -29,6 +29,17 @@ def add_battery(self, id):
     battery_instance.initialise_comms()
     pass
 
+@shared_task(bind=True, max_retries=10)
+def add_inverter(self, id):
+    log.info('Adding new inverter... id: %s', id)
+    from .models import Inverter
+    inverter_instance = Inverter.objects.get(id=id)
+    #log.info('Retrieved Inverter instance. Battery serial number: %s', battery_instance.serial_number)
+    inverter_instance.save()
+    #log.info('Inverter saved to db. Serial nunmber is: %s', battery_instance.serial_number)
+    #battery_instance.initialise_comms()
+    pass
+
 
 @shared_task(bind=True, max_retries=10)
 def send_sms_via_sms_box1(self, id):
