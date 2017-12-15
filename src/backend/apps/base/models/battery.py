@@ -49,9 +49,9 @@ class Battery(models.Model):
     
     
     def initialise_comms(self):
-        '''
+        """
         Function initialises comms. Maximum number of re-attempts: 5
-        '''
+        """
         log.info('initialising COM port: %s', self.port )
        
         pass
@@ -60,9 +60,9 @@ class Battery(models.Model):
         pass
     
     def update_values(self, comport_handle):
-        '''
+        """
         Call this function to update all the model attributes that are read from the battery. 
-        '''
+        """
         try:
             self.get_serial_number()
             self.get_pack_status(comport_handle)
