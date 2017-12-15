@@ -1,6 +1,10 @@
+import ctypes
+
 from django.db import models
 from django.dispatch import receiver
-from django.db.models.signals import pre_save, post_save
+from django.db.models.signals import post_save
+
+from ..models import InverterPool
 
 from ..log import log_inverter as log
 from ..tasks import add_inverter
@@ -8,18 +12,26 @@ from ..tasks import add_inverter
 import time
 import ctypes
 
+
 class Inverter(models.Model):
+    INVERTER_STATES = (
+        ('FREE', 'FREE'),
+        ('BUSY', 'BUSY'),
+        ('OFFLINE', 'OFFLINE')
+    )
+    port = models.CharField(max_length=10, blank=True, null=True)
+    ve_bus_address = models.CharField(max_length=10, blank=True, null=True)
     
-    port = models.CharField(max_length = 10, blank=True, null=True)
-    ve_bus_address = models.CharField(max_length = 10, blank=True, null=True)
+    dc_current = models.CharField(max_length=10, blank=True, null=True)
+    dc_voltage = models.CharField(max_length=10, blank=True, null=True)
+    ac_current = models.CharField(max_length=10, blank=True, null=True)
+    ac_voltage = models.CharField(max_length=10, blank=True, null=True)
     
-    dc_current = models.CharField(max_length = 10, blank=True, null=True)
-    dc_voltage = models.CharField(max_length = 10, blank=True, null=True)
-    ac_current = models.CharField(max_length = 10, blank=True, null=True)
-    ac_voltage = models.CharField(max_length = 10, blank=True, null=True)
-    
-    setpoint = models.CharField(max_length = 10, blank=True, null=True)
-    is_on = models.BooleanField(default = False)
+    setpoint = models.CharField(max_length=10, blank=True, null=True)
+    is_on = models.BooleanField(default=False)
+
+    inverter_pool = models.ForeignKey(InverterPool, related_name='inverters', related_query_name='inverters')
+    state = models.CharField(choices=INVERTER_STATES, max_length=32, default='OFFLINE')
     
     charging_setpoint = -500
     inverting_setpoint = 500
@@ -41,7 +53,7 @@ class Inverter(models.Model):
     
     def configure_ve_bus(self, comport_handle):
         """
-        This method does the start-up procedure on the inverter (resets the Mk2 etc)
+            This method does the start-up procedure on the inverter (resets the Mk2 etc)
         """
         A_command = b'\x04\xFF\x41\x01\x00\xBB'
         reset_command = b'\x02\xFF\x52\xAD'
@@ -58,46 +70,48 @@ class Inverter(models.Model):
             time.sleep(0.1) 
             log.info('VE Bus configured.')
             return True            
-        except:
-            log.exception('Exception encountered when initializing VE bus protocol')
+        except Exception as err:
+            log.exception('Initializing VE bus protocol failed because %s', err)
             return False
         
     def send_setpoint(self, comport_handle):
         """
-        This method sends the setpoint to the inverter (self.setpoint)
+            This method sends the setpoint to the inverter (self.setpoint)
         """
         try:
-            message_out = self.make_message_MK2();
+            message_out = self.make_message_MK2()
             comport_handle.write(message_out)
             return True
-        except:
-            log.exception('Exception during sending power setpoint to the PU')
+        except Exception as err:
+            log.exception('Sending power setpoint to the PU failed because %s', err)
             return False
     
     def make_message_MK2(self):
         """
-        This method return the setpoint command to send to the inverter. Uses self.setpoint.
+            This method return the setpoint command to send to the inverter. Uses self.setpoint.
         """
         try:
             d0 = b'\x05\xFF\x57\x32\x81\x00\xF2\x05\xff\x57\x34\x00\x00\x00' #need to add value and checksum
-            d1 = bytearray(d0); 
-            if (self.setpoint <0):
-                self.setpoint = 65535 + self.setpoint;
+            d1 = bytearray(d0)
+            if self.setpoint < 0:
+                self.setpoint = 65535 + self.setpoint
 
-            d1[11] = int(self.setpoint) % 256;
-            d1[12] = int(self.setpoint) >> 8;
-            S = 0
+            d1[11] = int(self.setpoint) % 256
+            d1[12] = int(self.setpoint) >> 8
+            s = 0
             for b in reversed(range(7,13)):
-                S = S - d1[b];    
-            d1[13] = S%256
+                s = s - d1[b]
+            d1[13] = s % 256
             return d1
-        except:
-            log.exception('Exception raised in setpoint message construction')
+        except Exception as err:
+            log.exception('Setpoint message construction failed because %s', err)
             return False
         
     def request_DC_frame(self, comport_handle):
         """
-        Sends request for a DC frame on the VE bus
+            Sends request for a DC frame on the VE bus
+        :param comport_handle:
+        :return:
         """
         try:
             #self.thread_RX.start()  #Start monitoring messages from Power Unit
@@ -105,61 +119,59 @@ class Inverter(models.Model):
             comport_handle.write(message)
             log.info('DC frame Requested')
             return True
-        except:
-            log.exception('Exception when requesting the DC frame - serial timeout perhaps?')
+        except Exception as err:
+            log.exception('Requesting the DC frame(maybe serial timeout) failed because %s', err)
             return False
     
     def request_AC_frame(self, comport_handle):
         """
-        Sends request for AC frame on the VE bus
+            Sends request for AC frame on the VE bus
         """
         try:
             message = b'\x03\xffF\x01\xb7'
             comport_handle.write(message)
             log.info('AC frame Requested')
             return True
-        except:
-            log.exception('Exception when requesting the AC frame - serial timeout perhaps?')
+        except Exception as err:
+            log.exception('Requesting the AC frame(maybe serial timeout) failed because %s', err)
             return False
-    
+
     def update_DC_frame(self, message, comport_handle):
         """
-        Updates the self.dc_current and self.dc_voltage variables.
+            Updates the self.dc_current and self.dc_voltage variables.
         """
-        #self.thread_RX.stop()
         try:
             self.dc_voltage = int.from_bytes(message[7:9], byteorder='little')
             self.dc_voltage = self.dc_voltage / 100
             charging_current = int.from_bytes(message[9:12], byteorder='little')
             discharging_current = int.from_bytes(message[12:15], byteorder='little')
             self.dc_current = charging_current + discharging_current
-            self.dc_current = self.dc_current/10
-            
+            self.dc_current = self.dc_current / 10
+
             self.stop_RX_thread()
             return True
-        except:
-            log.exception('Could not update the DC frame.')
+        except Exception as err:
+            log.exception('Could not update the DC frame because %s', err)
             return False
-        
-    
+
     def update_AC_frame(self, message, comport_handle):
         """
-        Updates the self.ac_voltage and self.ac_current
+            Updates the self.ac_voltage and self.ac_current
         """
         try:
-            self.ac_voltage = int.from_bytes(message[7:9], byteorder = 'little')/100
-            self.ac_current = ctypes.c_int16(int.from_bytes(message[9:11], byteorder = 'little'))
-            self.ac_current = self.ac_current.value/100
-            
+            self.ac_voltage = int.from_bytes(message[7:9], byteorder='little') / 100
+            self.ac_current = ctypes.c_int16(int.from_bytes(message[9:11], byteorder='little'))
+            self.ac_current = self.ac_current.value / 100
+
             self.stop_RX_thread()
             return True
         except Exception as err:
             log.exception('Could not update AC frame', err)
             return False
-        
+
     def get_next_byte(self):
         """
-        Use this function to read a single byte from the serial port
+            Use this function to read a single byte from the serial port
         """
         try:
             byte_in = self.ser_PU.read(1)
@@ -170,16 +182,16 @@ class Inverter(models.Model):
         
     def get_info_frame_reply(self):
         """
-        This function should run continuously and run onto all the invoming bytestream after 'Get frame' Command
-        The function will automatically call an update of the self.ac/dc-voltage/current variables if a suitable reply is detected.
+            This function should run continuously and run onto all the invoming bytestream after 'Get frame' Command
+            The function will automatically call an update of the self.ac/dc-voltage/current variables if a suitable reply is detected.
         """
         message = b'\x0f\x20'
         r = 15
         byte = self.get_next_byte()
         #spare_byte = byte
-        if(byte == b'\x0f'):
+        if byte == b'\x0f':
             new_byte = self.get_next_byte()
-            if(new_byte == b' '):
+            if new_byte == b' ':
                 for i in range(r):
                     new_byte = self.get_next_byte()
                     message = message + new_byte
@@ -197,11 +209,11 @@ class Inverter(models.Model):
                 pass
          
         return True
-    
+
     def make_state_message(self, state=0):
         """
-        Method will return the MK2 command for switching states.
-        Select state = 0 for off. State = 1 for on.
+            Method will return the MK2 command for switching states.
+            Select state = 0 for off. State = 1 for on.
         """
         #b'\x09\xFF\x53\x03\x00\xFF\x01\x00\x00\x04\x9E'
         try:
@@ -227,11 +239,11 @@ class Inverter(models.Model):
         except Exception as err:
             log.exception('Cannot make state message', err)
             return False
-        
+
     def send_state(self, state=0, comport_handle):
         """
-        Method will send a state command to the inverter.
-        Use state to choose state.
+            Method will send a state command to the inverter.
+            Use state to choose state.
         """
         try:
             comport_handle.write(self.make_state_message(state))
@@ -239,11 +251,11 @@ class Inverter(models.Model):
         except Exception as err:
             log.exception('Cannot send state.', err)
             return False
-        
+
     def charge(self, comport_handle):
         """
-        Method can be called and it will automatically configure the inverter to charge with a set amount
-        """    
+            Method can be called and it will automatically configure the inverter to charge with a set amount
+        """
         try:
             self.setpoint = self.charging_setpoint
             self.send_state(1, comport_handle)
@@ -251,10 +263,10 @@ class Inverter(models.Model):
         except Exception as err:
             log.exception('Cannot set charge mode.', err)
             return False
-        
+
     def invert(self, comport_handle):
         """
-        Method can be called and it will automatically configure the iverter to invert with a set amount
+            Method can be called and it will automatically configure the iverter to invert with a set amount
         """
         try:
             self.setpoint = self.inverting_setpoint
@@ -263,10 +275,10 @@ class Inverter(models.Model):
         except Exception as err:
             log.exception('Cannot set invert mode.', err)
             return False
-        
+
     def rest(self, comport_handle):
         """
-        Method will zero out the setpoint. The inverter will be kept on.
+            Method will zero out the setpoint. The inverter will be kept on.
         """
         try:
             self.setpoint = 0
@@ -275,10 +287,10 @@ class Inverter(models.Model):
         except Exception as err:
             log.exception('Cannot set rest mode. The inverter is probably still running!', err)
             return False
-        
+
     def stop(self, comport_handle):
         """
-        Method will zero out the setpoint and it will switch the inverter power off.
+            Method will zero out the setpoint and it will switch the inverter power off.
         """
         try:
             self.setpoint = 0
@@ -287,10 +299,10 @@ class Inverter(models.Model):
         except Exception as err:
             log.exception('Cannot stop the inveter!', err)
             return False
-        
+
     def update_frames(self, comport_handle):
         """
-        Call this method periodically to update the readings from the Inverter
+            Call this method periodically to update the readings from the Inverter
         """
         try:
             self.request_AC_frame(comport_handle) 
@@ -305,20 +317,27 @@ class Inverter(models.Model):
         
     def start_RX_thread(self):
         """
-        Would start the RX thread - would run self.get_info_frame_reply indefinitely.
+            Would start the RX thread - would run self.get_info_frame_reply indefinitely.
         """
         
         pass
     
     def stop_RX_thread(self):
         """
-        Would stop the RX thread
+            Would stop the RX thread
         """
         pass
-        
+
 
 @receiver(post_save, sender=Inverter, dispatch_uid="add_task_dispatch")
 def add_task_dispatch(sender, instance, **kwargs):
+    """
+
+    :param sender:
+    :param instance:
+    :param kwargs:
+    :return:
+    """
     created = kwargs.get('created', False)
     if created:
         # dispatch add task

@@ -181,6 +181,14 @@ LOGGING = {
             'maxBytes': MAX_BYTES,
             'backupCount': BACKUP_COUNT,
         },
+        'inverter_pool': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'verbose',
+            'filename': os.path.join(BASE_DIR, 'logs', 'inverter_pool.log'),
+            'maxBytes': MAX_BYTES,
+            'backupCount': BACKUP_COUNT,
+        },
     },
     'loggers': {
         'django': {
@@ -202,6 +210,14 @@ LOGGING = {
         },
         'battery': {
             'handlers': ['battery'],
+            'level': 'INFO',
+        },
+        'inverter': {
+            'handlers': ['inverter'],
+            'level': 'INFO',
+        },
+        'inverter_pool': {
+            'handlers': ['inverter_pool'],
             'level': 'INFO',
         },
     }
