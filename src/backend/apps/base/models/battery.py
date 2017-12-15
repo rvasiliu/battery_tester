@@ -70,7 +70,7 @@ class Battery(models.Model):
             self.get_pack_current()
             self.get_temperatures()
             log.info('Pack values updated. Pack serial number: %s', self.serial_number)
-            log.ingo('Pack cell voltages: %s, %s, %s, %s, %s, %s, %s, %s, %s', self.cv_1,
+            log.info('Pack cell voltages: %s, %s, %s, %s, %s, %s, %s, %s, %s', self.cv_1,
                      self.cv_2, self.cv_3, self.cv_4, self.cv_5, self.cv_6, self.cv_7, self.cv_8, self.cv_9)
             return True
         except:
@@ -203,6 +203,16 @@ class Battery(models.Model):
         self.pack_overtemperature_cells = 50
         self.pack_overtemperature_mosfet = 80
         return True
+    
+    
+    def check_safety_level_1(self):
+        """
+            Method returns True if everything OK. False if the level 1 limits have been exceeded.
+        """
+        
+        if((self.cv_max)>self.cell_overvoltage_level_1) | (self.cv_min)<self.cell_undervoltage_level_1)
+        pass
+        
         
     @property
     def port_handler(self):
