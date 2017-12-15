@@ -3,11 +3,13 @@ import ctypes
 from django.db import models
 from django.dispatch import receiver
 from django.db.models.signals import post_save
+from django.conf import settings
 
 from ..models import InverterPool
 
 from ..log import log_inverter as log
 from ..tasks import add_inverter
+from ..utils import VictronMultiplusMK2VCP
 
 import time
 import ctypes
@@ -32,10 +34,7 @@ class Inverter(models.Model):
 
     inverter_pool = models.ForeignKey(InverterPool, related_name='inverters', related_query_name='inverters')
     state = models.CharField(choices=INVERTER_STATES, max_length=32, default='OFFLINE')
-    
-    charging_setpoint = -500
-    inverting_setpoint = 500
-    
+
     #rx_thread
     #septpoint sending thread
     """
@@ -50,8 +49,11 @@ class Inverter(models.Model):
            Request Frame command is sent the thread will automatically chatch the replies and
            populated the frame attributes of the model 
     """
-    
-    def configure_ve_bus(self, comport_handle):
+    @property
+    def inverter_utilities(self):
+        return VictronMultiplusMK2VCP(self.port)
+
+    def configure_ve_bus(self):
         """
             This method does the start-up procedure on the inverter (resets the Mk2 etc)
         """
@@ -240,7 +242,7 @@ class Inverter(models.Model):
             log.exception('Cannot make state message', err)
             return False
 
-    def send_state(self, state=0, comport_handle):
+    def send_state(self, comport_handle, state=0):
         """
             Method will send a state command to the inverter.
             Use state to choose state.
@@ -257,7 +259,7 @@ class Inverter(models.Model):
             Method can be called and it will automatically configure the inverter to charge with a set amount
         """
         try:
-            self.setpoint = self.charging_setpoint
+            self.setpoint = settings.CHARGING_SETPOINT
             self.send_state(1, comport_handle)
             return True
         except Exception as err:
@@ -269,7 +271,7 @@ class Inverter(models.Model):
             Method can be called and it will automatically configure the iverter to invert with a set amount
         """
         try:
-            self.setpoint = self.inverting_setpoint
+            self.setpoint = settings.INVERTING_SETPOINT
             self.send_state(1, comport_handle)
             return True
         except Exception as err:

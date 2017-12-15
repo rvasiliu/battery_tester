@@ -9,6 +9,7 @@ Utils module. Contains object class for the VCP serial configuration (using pyth
 2. USB-ISS connected OnSystems 1st life battery pack
 '''
 
+import serial
 
 class VictronMultiplusMK2VCP(object):
     '''
@@ -45,6 +46,6 @@ class UsbIssBattery(object):
             self.serial_handle.parity = 'N'
             self.serial_handle.setDTR(False)
             self.serial_handle.bytesize = serial.EIGHTBITS
-            self.serial_handle.stopbits=serial.STOPBITS_TWO
+            self.serial_handle.stopbits = serial.STOPBITS_TWO
         except:
             pass

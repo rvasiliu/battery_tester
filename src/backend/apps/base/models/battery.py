@@ -203,21 +203,19 @@ class Battery(models.Model):
         self.pack_overtemperature_cells = 50
         self.pack_overtemperature_mosfet = 80
         return True
-    
-    
+
     def check_safety_level_1(self):
         """
             Method returns True if everything OK. False if the level 1 limits have been exceeded.
         """
-        
-        if((self.cv_max)>self.cell_overvoltage_level_1) | (self.cv_min)<self.cell_undervoltage_level_1)
+        # if((self.cv_max)>self.cell_overvoltage_level_1) | (self.cv_min)<self.cell_undervoltage_level_1)
         pass
-        
-        
+
+
     @property
     def port_handler(self):
         pass
-    
+
     @property
     def elapsed_time(self):
         return self.timestamp_confirmation-self.timestamp_send
