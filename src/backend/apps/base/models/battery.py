@@ -50,7 +50,7 @@ class Battery(models.Model):
     
     def initialise_comms(self):
         """
-        Function initialises comms. Maximum number of re-attempts: 5
+            Function initialises comms. Maximum number of re-attempts: 5
         """
         log.info('initialising COM port: %s', self.port )
        
@@ -61,7 +61,7 @@ class Battery(models.Model):
     
     def update_values(self, comport_handle):
         """
-        Call this function to update all the model attributes that are read from the battery. 
+            Call this function to update all the model attributes that are read from the battery. 
         """
         try:
             self.get_serial_number()
@@ -73,16 +73,16 @@ class Battery(models.Model):
             log.info('Pack cell voltages: %s, %s, %s, %s, %s, %s, %s, %s, %s', self.cv_1,
                      self.cv_2, self.cv_3, self.cv_4, self.cv_5, self.cv_6, self.cv_7, self.cv_8, self.cv_9)
             return True
-        except:
-            log.exception('Error encountered while updating pack values')
+        except Exception as err:
+            log.exception('Error encountered while updating pack values. Exception is: %s', err)
             return False
         
     
     def turn_pack_on(self, comport_handle):
         '''
-        This method turns the pack on. Note: function needs to be send every 10 sec minimum to maintain pack on.
-        input: comport handler
-        output: True if successful. False otherwise
+            This method turns the pack on. Note: function needs to be send every 10 sec minimum to maintain pack on.
+            input: comport handler
+            output: True if successful. False otherwise
         '''
         try:
             test = b'\x57\x01\x35\x40\x04\x01\x03\x00\x48\x03'
@@ -99,9 +99,9 @@ class Battery(models.Model):
             return False
         
     def get_pack_status(self, comport_handle):
-        '''
-        Method gets the status message from the battery pack. It populates self.status with the reply
-        '''
+        """
+            Method gets the status message from the battery pack. It populates self.status with the reply
+        """
         try: 
             message = b'\x57\x01\x34\x40\x01\x00\x00\x41\x03'
             comport_handle.write(message)
@@ -208,7 +208,51 @@ class Battery(models.Model):
         """
             Method returns True if everything OK. False if the level 1 limits have been exceeded.
         """
-        # if((self.cv_max)>self.cell_overvoltage_level_1) | (self.cv_min)<self.cell_undervoltage_level_1)
+        try:
+            c_ovp = self.cv_max > self.cell_overvoltage_level_1
+            c_uvp = self.cv_min < self.cell_undervoltage_level_1
+            
+            if c_uvp:
+                log.info('Cell undervoltage, level 1')
+                return  False
+            elif c_ovp:
+                log.info('Cell overvoltage, level 1')
+                return False
+            else:
+                return True
+        except Exception as err:
+            log.exception('Exception in checking cell safety level 1. Exception is: %s', err)
+            return -1
+        
+    
+    def check_safety_level_2(self):
+        """
+            Method return True if everything OK. False if a test stop trigger should be issued.
+        """
+        try:
+            c_ovp = self.cv_max > self.cell_overvoltage_level_2
+            c_uvp = self.cv_min < self.cell_undervoltage_level_2
+            ocp = self.dc_current > self.pack_overcurrent
+            ovt_mosfet = self.mosfet_temp > self.pack_overtemperature_mosfet
+            ovt_cells = self.pack_temp > self.pack_overtemperature_cells
+            if c_ovp: 
+                log.info('Cell over-voltage, level 2.')
+                return False
+            elif c_uvp:
+                log.info('Cell under-voltage, level2 2')
+                return False
+            elif ocp:
+                log.info('Battery over-current.')
+                return False
+            elif ovt_mosfet | ovt_cells:
+                log.info('Over-temperature')
+                return False
+            else:
+                return True
+        except Exception as err:
+            log.exception('Error in checking safety level 2. Exception is: %s', err)
+            return -1
+                
         pass
 
 

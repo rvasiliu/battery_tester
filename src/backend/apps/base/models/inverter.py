@@ -53,28 +53,6 @@ class Inverter(models.Model):
     def inverter_utilities(self):
         return VictronMultiplusMK2VCP(self.port)
 
-    def configure_ve_bus(self):
-        """
-            This method does the start-up procedure on the inverter (resets the Mk2 etc)
-        """
-        A_command = b'\x04\xFF\x41\x01\x00\xBB'
-        reset_command = b'\x02\xFF\x52\xAD'
-        X53_command = b'\x09\xFF\x53\x03\x00\xFF\x01\x00\x00\x04\x9E'
-        
-        try:
-            self.ser_PU.write(A_command)
-            time.sleep(0.1)
-            self.ser_PU.write(X53_command)
-            time.sleep(0.1)
-            self.ser_PU.write(reset_command)
-            time.sleep(0.1)
-            self.ser_PU.write(A_command)
-            time.sleep(0.1) 
-            log.info('VE Bus configured.')
-            return True            
-        except Exception as err:
-            log.exception('Initializing VE bus protocol failed because %s', err)
-            return False
         
     def send_setpoint(self, comport_handle):
         """
