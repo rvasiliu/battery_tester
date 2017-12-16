@@ -78,25 +78,7 @@ class Battery(models.Model):
             return False
         
     
-    def turn_pack_on(self, comport_handle):
-        '''
-            This method turns the pack on. Note: function needs to be send every 10 sec minimum to maintain pack on.
-            input: comport handler
-            output: True if successful. False otherwise
-        '''
-        try:
-            test = b'\x57\x01\x35\x40\x04\x01\x03\x00\x48\x03'
-            comport_handle.write(test)
-            #time.sleep(0.1)
-            test = b'\x57\x01\x30\x41\x20\x03'
-            comport_handle.write(test)
-            #time.sleep(0.1)
-            self.is_on = True
-            log.info('Pack turned on. Pack serial number: %s', self.serial_number)
-            return True
-        except:
-            log.info('Error when turning pack on. Pack serial number: %s', self.serial_number)
-            return False
+    
         
     def get_pack_status(self, comport_handle):
         """
