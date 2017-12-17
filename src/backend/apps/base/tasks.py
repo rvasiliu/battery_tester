@@ -13,8 +13,8 @@ class MaxRetriesExceededException(Exception):
     pass
 
 
-@periodic_task(run_every=timedelta(seconds=30))
-def periodic_task_implement(self, id):
+@periodic_task(bind=True, run_every=timedelta(seconds=5))
+def periodic_task_implement(self):
     log.info('periodic task printing with a 3 seconds period')
 
 

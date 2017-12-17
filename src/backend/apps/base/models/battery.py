@@ -3,11 +3,17 @@ from ..utils import UsbIssBattery
 
 
 class Battery(models.Model):
+    BATTERY_STATES = (
+        ('UNDER TEST', 'UNDER TEST'),
+        ('FREE', 'FREE'),
+        ('OFFLINE', 'OFFLINE')
+    )
+    name = models.CharField(max_length=32, blank=True, null=True)
     serial_number = models.CharField(max_length=10, blank=True, null=True)
     port = models.CharField(max_length=10, blank=True, null=True)
     i2c_address = models.CharField(max_length=10, blank=True, null=True)
 
-    firmware_version = models.IntegerField(max_length=10, blank=True, null=True)
+    firmware_version = models.IntegerField(blank=True, null=True)
     
     dc_voltage = models.CharField(max_length=10, blank=True, null=True)
     dc_current = models.CharField(max_length=10, blank=True, null=True)
@@ -38,6 +44,11 @@ class Battery(models.Model):
     
     is_on = models.BooleanField(default=False)
     error_flag = models.BooleanField(default=False)
+
+    state = models.CharField(max_length=32, choices=BATTERY_STATES, blank=True, null=True)
+
+    def __str__(self):
+        return '{}_{}'.format(self.name, self.port)
 
     @property
     def battery_utilities(self):

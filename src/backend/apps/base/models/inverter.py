@@ -13,6 +13,7 @@ class Inverter(models.Model):
         ('BUSY', 'BUSY'),
         ('OFFLINE', 'OFFLINE')
     )
+    name = models.CharField(max_length=32, blank=True, null=True)
     port = models.CharField(max_length=10, blank=True, null=True)
     ve_bus_address = models.CharField(max_length=10, blank=True, null=True)
 
@@ -41,6 +42,9 @@ class Inverter(models.Model):
            Request Frame command is sent the thread will automatically chatch the replies and
            populated the frame attributes of the model 
     """
+
+    def __str__(self):
+        return '{}_{}'.format(self.name, self.port)
 
     @property
     def inverter_utilities(self):

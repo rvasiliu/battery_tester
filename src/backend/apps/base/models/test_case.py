@@ -19,12 +19,16 @@ class TestCase(models.Model):
         ('FINISHED', 'FINISHED'),
         ('PENDING', 'PENDING')
     )
-    battery = models.ForeignKey(Battery, related_name='test_case')
-    inverter = models.ForeignKey(Inverter, related_name='test_case')
+    name = models.CharField(max_length=32, blank=True, null=True)
+    battery = models.ForeignKey(Battery, related_name='test_case', limit_choices_to={'state': 'FREE'})
+    inverter = models.ForeignKey(Inverter, related_name='test_case', limit_choices_to={'state': 'FREE'})
     result = models.CharField(max_length=32, blank=True, null=True)
     description = models.CharField(max_length=32, blank=True, null=True)
     config = models.CharField(max_length=32, blank=True, null=True)
     state = models.CharField(max_length=32, choices=TEST_CASE_STATES, default='PENDING')
+
+    def __str__(self):
+        return '{}'.format(self.name)
 
     def load_config(self):
         """
@@ -82,4 +86,4 @@ def start_test_task(sender, instance, **kwargs):
         # log.info('dispatching main task for test case id: %s', instance.id)
 
         # main_task.delay(instance.id)
-        periodic_task_implement.delay(3)
+        periodic_task_implement.apply_async()

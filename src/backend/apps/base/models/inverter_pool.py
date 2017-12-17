@@ -4,6 +4,10 @@ from ..log import log_inverter_pool as log
 
 
 class InverterPool(models.Model):
+    name = models.CharField(max_length=32, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
 
     @property
     def nr_available_inverters(self):
