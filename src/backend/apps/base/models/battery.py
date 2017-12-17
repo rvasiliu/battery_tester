@@ -49,7 +49,13 @@ class Battery(models.Model):
 
     @property
     def battery_utilities(self):
-        return UsbIssBattery(self.port)
+        # get the instance from the class attribute if it's already there
+        if self.port in UsbIssBattery.battery_instances:
+            return UsbIssBattery.battery_instances[self.port]
+        # if not, create it and store it on the class attribute
+        usbiss_instance = UsbIssBattery(self.port)
+        UsbIssBattery.battery_instances[self.port] = usbiss_instance
+        return usbiss_instance
 
     def initialise_comms(self):
         """

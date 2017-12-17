@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save
 
 from ..models import Inverter, InverterPool, Battery
-from ..tasks import main_task
+from ..tasks import main_task, periodic_task_implement
 
 
 class TestCase(models.Model):
@@ -16,10 +16,10 @@ class TestCase(models.Model):
     )
     battery = models.ForeignKey(Battery, related_name='test_case')
     inverter = models.ForeignKey(Inverter, related_name='test_case')
-    result = models.CharField(max_length=32)
+    result = models.CharField(max_length=32, blank=True, null=True)
     description = models.CharField(max_length=32, blank=True, null=True)
-    config = models.CharField(max_length=32)
-    state = models.CharField(choices=TEST_CASE_STATES, default='PENDING')
+    config = models.CharField(max_length=32, blank=True, null=True)
+    state = models.CharField(max_length=32, choices=TEST_CASE_STATES, default='PENDING')
 
     def load_config(self):
         """
@@ -35,4 +35,5 @@ def start_test_task(sender, instance, **kwargs):
     if created:
         # dispatch add task
         # log.info('dispatching main task for test case id: %s', instance.id)
-        main_task.delay(instance.id)
+        # main_task.delay(instance.id)
+        periodic_task_implement.delay(3)

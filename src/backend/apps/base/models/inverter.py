@@ -50,6 +50,14 @@ class Inverter(models.Model):
     """
     @property
     def inverter_utilities(self):
+        # get the instance from the class attribute if it's already there
+        if self.port in VictronMultiplusMK2VCP.invertor_instances:
+            return VictronMultiplusMK2VCP.invertor_instances[self.port]
+        # if not, create it and store it on the class attribute
+        victron_instance = VictronMultiplusMK2VCP(self.port)
+        VictronMultiplusMK2VCP.inverter_instances[self.port] = victron_instance
+        return victron_instance
+
         return VictronMultiplusMK2VCP(self.port)
 
     def configure_ve_bus(self):

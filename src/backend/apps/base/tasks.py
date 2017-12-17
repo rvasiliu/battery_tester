@@ -1,13 +1,18 @@
 from celery import shared_task
 from celery.app.control import Control
 from celery.task import periodic_task
+from datetime import timedelta
 
 from .log import log_celery_task as log
+
 
 class MaxRetriesExceededException(Exception):
     pass
 
-@periodic_task()
+
+@periodic_task(run_every=timedelta(seconds=30))
+def periodic_task_implement(self, id):
+    log.info('periodic task printing with a 3 seconds period')
 
 
 @shared_task(bind=True)
