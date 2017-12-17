@@ -12,7 +12,6 @@ from ..tasks import add_inverter
 from ..utils import VictronMultiplusMK2VCP
 
 import time
-import ctypes
 
 
 class Inverter(models.Model):
@@ -96,7 +95,6 @@ class Inverter(models.Model):
         message = b'\x0f\x20'
         r = 15
         byte = self.get_next_byte()
-        #spare_byte = byte
         if byte == b'\x0f':
             new_byte = self.get_next_byte()
             if new_byte == b' ':
@@ -106,17 +104,24 @@ class Inverter(models.Model):
 
                 if message[6] == 12:
                     print('DC message: ', message)
+                    frame = {'type':'DC', 
+                            'message':message}
+                    return frame
                     self.update_DC_frame(message)
                     
                 elif message[6] == 8: # we have AC frame
                     print('AC message: ', message)
+                    frame = {'type':'AC', 
+                            'message':message}
+                    return frame
                     self.update_AC_frame(message)
                 else:
                     print('Message not recognised')
+                    frame = {'type':'Unknown', 
+                            'message':message}
             else:
-                pass
-         
-        return True
+                return None
+        return None
 
     
 

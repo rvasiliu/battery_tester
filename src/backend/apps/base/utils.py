@@ -4,6 +4,8 @@ Created on 15 Dec 2017
 @author: Vas
 '''
 from _overlapped import NULL
+from backend.settings.base import BATTERY_CELL_OVP_LEVEL_1,\
+    BATTERY_CELL_UVP_LEVEL_1
 '''
 Utils module. Contains object class for the VCP serial configuration (using python's serial library)
 1. Victron Multiplus inverter with MK2b interface (tested for USB-RS232)
@@ -16,6 +18,7 @@ from .log import log_battery as log_battery
 
 import serial
 import time
+import struct
 
 class VictronMultiplusMK2VCP(object):
     '''
@@ -23,10 +26,17 @@ class VictronMultiplusMK2VCP(object):
     
     1. Call 'send setpoint' periodically (5 seconds)
     2. Call 'request_frames_update' periodically (5 seconds)
+    3. Call '
     
     '''
     
     setpoint = 0
+    
+    inverter_variables = {'dc_current': 0,
+                          'dc_voltage': 0,
+                          'ac_current': 0,
+                          'ac_voltage': 0}
+    
     
     def __init__(self, COMPORT):
         self.COMPORT = COMPORT
@@ -44,6 +54,18 @@ class VictronMultiplusMK2VCP(object):
         except Exception as err:
             log_inverter.exception('Could not open port to inverter on %s. Error is: %s', self.COMPORT, err)
             
+    def close_coms(self):
+        """
+            Closes the serial resource for the inverter
+        """
+        try:
+            self.serial_handle.close()
+            log_inverter.info('Closed port to inverter on %s', self.COMPORT)
+            return True
+        except Exception as err:
+            log_inverter.exception('Could not close inverter port %s because %s', self.COMPORT, err)
+            return False
+    
     def configure_ve_bus(self):
         """
             This method does the start-up procedure on the inverter (resets the Mk2 etc)
@@ -72,7 +94,7 @@ class VictronMultiplusMK2VCP(object):
             This method sends the setpoint to the inverter (self.setpoint)
         """
         try:
-            message_out = self.make_message_MK2()
+            message_out = self.make_message_MK2(self.setpoint)
             self.serial_handle.write(message_out)
             return True
         except Exception as err:
@@ -251,6 +273,32 @@ class UsbIssBattery(object):
     '''
     USB-ISS connected OnSystems 1st life battery pack
     '''  
+    
+    status_message = b''
+    
+    pack_variables = {'serial_number': 0, 
+                      'cv_1': 0, 'cv_2': 0,
+                      'cv_3': 0, 'cv_4': 0,
+                      'cv_5': 0, 'cv_6': 0,
+                      'cv_7': 0, 'cv_8': 0,
+                      'cv_9': 0, 'cv_max':0,
+                      'cv_min':0, 
+                      'mosfet_temp': 0, 'pack_temp': 0,
+                      'dc_current': 0,
+                      'is_cell_overvoltage_level_1': False,
+                      'is_cell_overvoltage_level_2': False,
+                      'is_cell_undervoltage_level_1':False,
+                      'is_cell_undervoltage_level_2':False,
+                      'is_not_safe_level_1': False,
+                      'is_not_safe_level_2': False,
+                      'is_pack_overcurrent':False,
+                      'is_overtemperature_mosfets':False,
+                      'is_overtemperature_cells':False,
+                      'is_on':False,       
+                      'last_status_update': time.time()               
+                      }
+    
+    
     def __init__(self, COMPORT):
         self.COMPORT = COMPORT
 
@@ -285,5 +333,207 @@ class UsbIssBattery(object):
             log_battery.exception('Error when turning pack on port: %s. Pack serial number: %s', self.COMPORT, self.serial_number)
             return False
 
+    def close_coms(self):
+        """
+            Closes resources for battery serial
+        """
+        try:
+            self.serial_handle.close()
+            log_battery.info('Closed battery port %s.', self.COMPORT)
+            return True
+        except Exception as err:
+            log_battery.exception('Could not close battery port %s because %s', self.COMPORT, err)
 
+    def get_pack_status(self):
+        """
+            Method gets the status message from the battery pack. It populates self.status with the reply
+        """
+        try: 
+            message = b'\x57\x01\x34\x40\x01\x00\x00\x41\x03'
+            self.serial_handle.write(message)
+            time.sleep(0.1)
+            reply = self.serial_handle.read(10)
+            message = b'\x54\x41\x3E' #this matches the length of the message read
+            self.serial_handle.reset_input_buffer()
+            self.serial_handle.write(message)
+            time.sleep(0.1)
+            self.status_message = self.USB_ISS.read(100)
+
+            crc = 0;
+            crc_received = int.from_bytes({self.status_message[-2],self.status_message[-1]}, byteorder = 'little')
+            for i in range(60):
+                crc = crc + self.status_message[i];
+
+            if(crc == crc_received):
+                return True
+            else:
+                log_battery.info('Status message CRC failed for battery on port %s.', self.COMPORT)
+                return False
+        except Exception as err:
+            log_battery.exception('Could not refresh pack values on port %s. Reason: %s.', self.COMPORT, err)
+            return False
         
+    def update_values(self, comport_handle):
+        """
+            Call this function to update all the model attributes that are read from the battery. 
+        """
+        try:
+            if not self.get_pack_status():
+                log_battery.info('Asked for new status but failed. Either CRC or exception. Port: %s', self.COMPORT)
+                return False
+            self.get_serial_number()
+            self.get_pack_current()
+            self.get_cell_voltages()
+            self.get_temperatures()
+            log_battery.info('Pack values updated. Pack serial number: %s', self.serial_number)
+            log_battery.info('Pack cell voltages: %s, %s, %s, %s, %s, %s, %s, %s, %s', self.cv_1,
+                     self.cv_2, self.cv_3, self.cv_4, self.cv_5, self.cv_6, self.cv_7, self.cv_8, self.cv_9)
+            self.pack_variables['last_status_update'] = time.time()
+            return True
+        except Exception as err:
+            log_battery.exception('Error encountered while updating pack values. Exception is: %s', err)
+            return False
+      
+    def get_serial_number(self):
+        """
+            Method extract the serial number out of the status message. Populates self.serial_number
+        """
+        try:
+            self.pack_variables['serial_number'] = int.from_bytes(self.status_message[56:60], byteorder = 'little')
+            return True
+        except:
+            return False
+    
+    def get_pack_current(self):
+        """
+            Extract the pack current out of the battery message reply (get_Status command). Updates self.dc_current
+            input: none
+            output: True if successful. False otherwise
+        """
+        try:
+            temp_variable = struct.unpack('<f', self.status_message[50:54])
+            self.pack_variables['dc_current'] = "{0:.3f}".format(temp_variable[0])
+            return True
+        except Exception as err:
+            log_battery.exception('Cannot refresh pack current value for batt on port %s. Reason is: %s.', self.COMPORT, err)
+            return False
+    
+    def get_cell_voltages(self):
+        """
+            Function gets cell voltages out of self.status and populates cv1 -> cv9 as well as cv_max and cv_min
+        """
+        try:
+            data = self.status_message
+            C1 = (struct.unpack('>f',struct.pack("B",data[17])+struct.pack("B", data[16]) + struct.pack("B", data[15])+struct.pack("B",data[14])))
+            C2 = (struct.unpack('>f',struct.pack("B",data[21])+struct.pack("B", data[20]) + struct.pack("B", data[19])+struct.pack("B",data[18])))
+            C3 = (struct.unpack('>f',struct.pack("B",data[25])+struct.pack("B", data[24]) + struct.pack("B", data[23])+struct.pack("B",data[22])))
+            C4 = (struct.unpack('>f',struct.pack("B",data[29])+struct.pack("B", data[28]) + struct.pack("B", data[27])+struct.pack("B",data[26])))
+            C5 = (struct.unpack('>f',struct.pack("B",data[33])+struct.pack("B", data[32]) + struct.pack("B", data[31])+struct.pack("B",data[30])))
+            C6 = (struct.unpack('>f',struct.pack("B",data[37])+struct.pack("B", data[36]) + struct.pack("B", data[35])+struct.pack("B",data[34])))
+            C7 = (struct.unpack('>f',struct.pack("B",data[41])+struct.pack("B", data[40]) + struct.pack("B", data[39])+struct.pack("B",data[38])))
+            C8 = (struct.unpack('>f',struct.pack("B",data[45])+struct.pack("B", data[44]) + struct.pack("B", data[43])+struct.pack("B",data[42])))
+            C9 = (struct.unpack('>f',struct.pack("B",data[49])+struct.pack("B", data[48]) + struct.pack("B", data[47])+struct.pack("B",data[46])))
+    
+            self.pack_variables['cv_1'] = "{0:.3f}".format(C1[0])
+            self.pack_variables['cv_2'] = "{0:.3f}".format(C2[0])
+            self.pack_variables['cv_3'] = "{0:.3f}".format(C3[0])
+            self.pack_variables['cv_4'] = "{0:.3f}".format(C4[0])
+            self.pack_variables['cv_5'] = "{0:.3f}".format(C5[0])
+            self.pack_variables['cv_6'] = "{0:.3f}".format(C6[0])
+            self.pack_variables['cv_7'] = "{0:.3f}".format(C7[0])
+            self.pack_variables['cv_8'] = "{0:.3f}".format(C8[0])
+            self.pack_variables['cv_9'] = "{0:.3f}".format(C9[0])
+            
+            self.pack_variables['cv_min'] = min([self.pack_variables['cv_1'], self.pack_variables['cv_2'], self.pack_variables['cv_3'],
+                               self.pack_variables['cv_4'], self.pack_variables['cv_5'], self.pack_variables['cv_6'],
+                               self.pack_variables['cv_7'], self.pack_variables['cv_8'], self.pack_variables['cv_9'] ])
+            
+            self.pack_variables['cv_max'] = max([self.pack_variables['cv_1'], self.pack_variables['cv_2'], self.pack_variables['cv_3'],
+                               self.pack_variables['cv_4'], self.pack_variables['cv_5'], self.pack_variables['cv_6'],
+                               self.pack_variables['cv_7'], self.pack_variables['cv_8'], self.pack_variables['cv_9'] ])
+            return True
+        except Exception as err:
+            log_battery.exception('Could not refresh cell voltages on port %s. Reason: %s.', self.COMPORT, err)
+            return False  
+        
+    def get_temperatures(self):
+        """
+            method extracts the temperature readouts from self.status and populates mosfet and pack temperature readings
+        """
+        try:
+            mosfet_temp= struct.unpack('<f', self.status_message[6:10])
+            pack_temp = struct.unpack('<f', self.status_message[10:14])
+            
+            self.pack_variables['mosfet_temp'] = "{0:.3f}".format(mosfet_temp[0])
+            self.pack_variables['pack_temp'] = "{0:.3f}".format(pack_temp[0])
+            return True
+        except Exception as err:
+            log_battery.exception('Could not refresh temperature values for pack on port %s. Exception is: %s.', self.COMPORT, err)
+            return False
+        
+    def check_safety_level_1(self):
+        """
+            Method returns True if everything OK. False if the level 1 limits have been exceeded.
+        """
+        try:
+            c_ovp = self.pack_variables['cv_max'] > BATTERY_CELL_OVP_LEVEL_1
+            c_uvp = self.pack_variables['cv_min'] < BATTERY_CELL_UVP_LEVEL_1
+            
+            if c_uvp:
+                log_battery.info('Cell undervoltage, level 1 on port: %s', self.COMPORT)
+                self.pack_variables['is_cell_undervoltage_level_1'] = True
+                self.pack_variables['is_not_safe_level_1'] = True
+                return  False
+            elif c_ovp:
+                log_battery.info('Cell overvoltage, level 1 on port: %s', self.COMPORT)
+                self.pack_variables['is_cell_overvoltage_level_1'] = True
+                self.pack_variables['is_not_safe_level_1'] = True
+                return False
+            else:
+                return True
+        except Exception as err:
+            log_battery.exception('Exception in checking cell safety level 1 on port %s. Exception is: %s', self.COMPORT, err)
+            return -1
+        
+    
+    def check_safety_level_2(self):
+        """
+            Method return True if everything OK. False if a test stop trigger should be issued.
+        """
+        try:
+            c_ovp = self.cv_max > self.cell_overvoltage_level_2
+            c_uvp = self.cv_min < self.cell_undervoltage_level_2
+            ocp = self.dc_current > self.pack_overcurrent
+            ovt_mosfet = self.mosfet_temp > self.pack_overtemperature_mosfet
+            ovt_cells = self.pack_temp > self.pack_overtemperature_cells
+            if c_ovp: 
+                log_battery.info('Cell over-voltage, level 2. Port: %s', self.COMPORT)
+                self.pack_variables['is_cell_overvoltage_level_2'] = True
+                self.pack_variables['is_not_safe_level_2'] = True
+                return False
+            elif c_uvp:
+                log_battery.info('Cell under-voltage, level 2. Port: %s', self.COMPORT)
+                self.pack_variables['is_cell_undervoltage_level_2'] = True
+                self.pack_variables['is_not_safe_level_2'] = True
+                return False
+            elif ocp:
+                log_battery.info('Battery over-current. Port: %s', self.COMPORT)
+                self.pack_variables['is_pack_overcurrent'] = True
+                self.pack_variables['is_not_safe_level_2'] = True
+                return False
+            elif ovt_mosfet:
+                log_battery.info('Over-temperature (mosfets) on port: %s', self.COMPORT)
+                self.pack_variables['is_overtemperature_mosfets'] = True
+                self.pack_variables['is_not_safe_level_2'] = True
+                return False
+            elif ovt_cells:
+                log_battery.info('Over-temperature (mosfets) on port: %s', self.COMPORT)
+                self.pack_variables['is_overtemperature_cells'] = True
+                self.pack_variables['is_not_safe_level_2'] = True
+                return False
+            else:
+                return True
+        except Exception as err:
+            log_battery.exception('Error in checking safety level 2 on port %s. Exception is: %s', self.COMPORT, err)
+            return -1
+                
