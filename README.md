@@ -15,10 +15,13 @@
 # Setup RabbitMQ
 
 ```rabbitmq command (https://cmatskas.com/getting-started-with-rabbitmq-on-windows/)```
+
 ```rabbitmq-plugins.bat enable rabbitmq_management```
 
 ```rabbitmqctl add_user <username> <password>```
+
 ```rabbitmqctl add_vhost <vhost>```
+
 ```rabbitmqctl set_permissions -p <vhost> <username> ".*" ".*" ".*"```
 
 # Django:
