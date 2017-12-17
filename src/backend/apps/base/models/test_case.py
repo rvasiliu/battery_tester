@@ -23,7 +23,7 @@ class TestCase(models.Model):
     inverter = models.ForeignKey(Inverter, related_name='test_case')
     result = models.CharField(max_length=32, blank=True, null=True)
     description = models.CharField(max_length=32, blank=True, null=True)
-    config = models.(max_length=32, blank=True, null=True)
+    config = models.CharField(max_length=32, blank=True, null=True)
     state = models.CharField(max_length=32, choices=TEST_CASE_STATES, default='PENDING')
 
     def load_config(self):
