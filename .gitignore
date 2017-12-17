@@ -8,4 +8,8 @@ newrelic.ini
 node_modules/
 pidfiles/
 backend/assets/
+<<<<<<< HEAD
 local.py
+=======
+backend/settings/local.py
+>>>>>>> 11a1231c4d860c5bdea2b61c4726c58cb7fd9db0
