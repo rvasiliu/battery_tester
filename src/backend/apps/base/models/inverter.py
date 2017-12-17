@@ -8,7 +8,6 @@ from django.conf import settings
 from ..models import InverterPool
 
 from ..log import log_inverter as log
-from ..tasks import add_inverter
 from ..utils import VictronMultiplusMK2VCP
 
 import time

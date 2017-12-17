@@ -4,8 +4,6 @@ Created on 15 Dec 2017
 @author: Vas
 '''
 from _overlapped import NULL
-from backend.settings.base import BATTERY_CELL_OVP_LEVEL_1,\
-    BATTERY_CELL_UVP_LEVEL_1
 '''
 Utils module. Contains object class for the VCP serial configuration (using python's serial library)
 1. Victron Multiplus inverter with MK2b interface (tested for USB-RS232)
@@ -32,10 +30,12 @@ class VictronMultiplusMK2VCP(object):
     
     setpoint = 0
     
-    inverter_variables = {'dc_current': 0,
-                          'dc_voltage': 0,
-                          'ac_current': 0,
-                          'ac_voltage': 0}
+    inverter_variables = {
+                        'dc_current': 0,
+                        'dc_voltage': 0,
+                        'ac_current': 0,
+                        'ac_voltage': 0
+                          }
     
     
     def __init__(self, COMPORT):
@@ -266,8 +266,7 @@ class VictronMultiplusMK2VCP(object):
         except Exception as err:
             log_inverter.exception('Cannot stop the inverter on port %s. Exception is: %s',self.COMPORT, err)
             return False 
-     
-     
+         
         
 class UsbIssBattery(object):
     '''

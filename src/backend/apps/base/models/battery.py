@@ -47,8 +47,7 @@ class Battery(models.Model):
     error_flag = models.BooleanField(default=False)
     
     status = []
-    
-    
+
     @property
     def battery_utilities(self):
         return UsbIssBattery(self.port)   
