@@ -4,6 +4,9 @@ from celery.task import periodic_task
 from datetime import timedelta
 
 from .log import log_celery_task as log
+from .log import log_test_case
+
+from django.conf import settings
 
 
 class MaxRetriesExceededException(Exception):
@@ -66,6 +69,30 @@ def safety_check(self, battery_id, inv_periodic_task_id, bat_periodic_task_id, m
 
     # here you should send stop to inv and bat
 
+    # setting test_case result
+    test_case = battery.test_case.all()[0]
+    test_case.state = 'FINISHED'
+    test_case.result = 'ERROR'
+    test_case.description = 'failed because of ...'
+    test_case.save()
+
+    # stop the main task
+    Control.revoke(main_task_id, terminate=True)
+
+    #add code to check battery parameter/safety flag
+     
+    if not battery.battery_utilities.check_safety_level_2():
+        #stop rig here
+        pass
+
+    # stop the periodic tasks
+    Control.revoke(inv_periodic_task_id, terminate=True)
+    Control.revoke(bat_periodic_task_id, terminate=True)
+
+    #stop inverter, stop battery
+    battery.battery_utilities.stop_and_release()
+    #inverter.inverter_utilities.stop_and_release()
+    
     # setting test_case result
     test_case = battery.test_case.all()[0]
     test_case.state = 'FINISHED'
