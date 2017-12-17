@@ -1,8 +1,14 @@
+import pandas as pd
+
 from celery import shared_task
 from celery.app.control import Control
 from celery.task import periodic_task
 
 from .log import log_celery_task as log
+from .log import log_test_case
+from backend.apps.base.models import inverter
+
+from django.conf import settings
 
 class MaxRetriesExceededException(Exception):
     pass
@@ -43,9 +49,11 @@ def send_battery_keep_alive(self, battery_id, keep_alive):
 @shared_task(bind=True)
 def safety_check(self, battery_id, inv_periodic_task_id, bat_periodic_task_id, main_task_id):
     from .models import Battery
+    #from .models import Inverter
     battery = Battery.objects.get(id=battery_id)
+    
     # TODO
-    # check battery parameters
+    # check battery parameter    
     # if not ok:
     # 1. stop periodic tasks(inv, bat)
     # 2. send stop to inv
@@ -53,14 +61,20 @@ def safety_check(self, battery_id, inv_periodic_task_id, bat_periodic_task_id, m
     # 4. set result on test_case = failed and reason/description
     # 5. stop main task
 
-    # add code to check the battery parameter(or just call a method of the battery object
+    #add code to check battery parameter/safety flag
+     
+    if not battery.battery_utilities.check_safety_level_2():
+        #stop rig here
+        pass
 
     # stop the periodic tasks
     Control.revoke(inv_periodic_task_id, terminate=True)
     Control.revoke(bat_periodic_task_id, terminate=True)
 
-    # here you should send stop to inv and bat
-
+    #stop inverter, stop battery
+    battery.battery_utilities.stop_and_release()
+    #inverter.inverter_utilities.stop_and_release()
+    
     # setting test_case result
     test_case = battery.test_case.all()[0]
     test_case.state = 'FINISHED'
@@ -83,3 +97,26 @@ def main_task(self, test_case_id):
     safety_check.delay(battery.id, inv_periodic_task, bat_periodic_task, self.request.id)
     # TODO
     # main logic
+    df_recipe = pd.read_csv(settings.LOOKUP_TABLE)
+    for i in range(0,len(df_recipe)):
+        log_test_case.info('Proceeding to step %s in test case with ID: %s.', i, test_case_id)
+        if(df_recipe.step_type[i] == 'CC Charge'):
+            log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], test_case_id)
+            test_case.cc_charge()
+            pass
+
+        elif(df_recipe.step_type[i] == 'CC Discharge'):
+            log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], test_case_id)
+            test_case.cc_discharge()
+            pass
+        
+        elif(df_recipe.step_type[i] == 'Rest'):
+            log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], test_case_id)
+            test_case.rest()
+            pass
+        
+        else:
+            log_test_case.info('Unrecognised Step Type in test case with ID: %s', test_case_id)
+            pass
+        
+        

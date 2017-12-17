@@ -4,6 +4,8 @@ Created on 15 Dec 2017
 @author: Vas
 '''
 from _overlapped import NULL
+from Crypto.Util.number import inverse
+from backend.settings.base import MOSFETS_OVERTEMPERATURE, CELLS_OVERTEMPERATURE
 '''
 Utils module. Contains object class for the VCP serial configuration (using python's serial library)
 1. Victron Multiplus inverter with MK2b interface (tested for USB-RS232)
@@ -198,7 +200,7 @@ class VictronMultiplusMK2VCP(object):
             Use this function to read a single byte from the serial port
         """
         try:
-            byte_in = self.ser_PU.read(1)
+            byte_in = self.serial_handle.read(1)
             return byte_in
         except Exception as err:
             log_inverter.exception('Unable to get next byte from inverter on port: %s. Error is: %s', self.COMPORT, err)
@@ -230,7 +232,7 @@ class VictronMultiplusMK2VCP(object):
             log_inverter.exception('Cannot set charge mode on port %s. Exception is: %s',self.COMPORT, err)
             return False
 
-    def invert(self, comport_handle):
+    def invert(self):
         """
             Method can be called and it will automatically configure the iverter to invert with a set amount
         """
@@ -242,7 +244,7 @@ class VictronMultiplusMK2VCP(object):
             log_inverter.exception('Cannot set invert mode on port %s. Exception is: %s',self.COMPORT, err)
             return False
 
-    def rest(self, comport_handle):
+    def rest(self):
         """
             Method will zero out the setpoint. The inverter will be kept on.
         """
@@ -255,7 +257,7 @@ class VictronMultiplusMK2VCP(object):
                                     'is still running? Exception is: %s', self.COMPORT, err)
             return False
 
-    def stop(self, comport_handle):
+    def stop(self):
         """
             Method will zero out the setpoint and it will switch the inverter power off.
         """
@@ -266,7 +268,19 @@ class VictronMultiplusMK2VCP(object):
         except Exception as err:
             log_inverter.exception('Cannot stop the inverter on port %s. Exception is: %s',self.COMPORT, err)
             return False 
-         
+        
+    def stop_and_release(self):
+        """
+            Use this method when the test case has ended
+        """
+        try:
+            self.stop()
+            self.close_coms()
+            log_inverter.info('Stopped and released inverter on port %s.', self.COMPORT)
+            return True
+        except Exception as err:
+            log_inverter.exception('Was unable to stop and release inverter on port %s. Reason: %s.', self.COMPORT, err)
+            return False
         
 class UsbIssBattery(object):
     '''
@@ -312,6 +326,17 @@ class UsbIssBattery(object):
             self.serial_handle.stopbits = serial.STOPBITS_TWO
         except Exception as err:
             log_battery.exception('Cannot open comms to battery on port %s because of the following error: %s', self.COMPORT, err)
+s
+            
+            
+    def configure_USB_ISS(self):
+        """
+            This function will take care of configuring the USB-> I2C bridge.
+        """
+        try:
+            pass
+        except:
+            pass
 
     def turn_pack_on(self, comport_handle):
         '''
@@ -475,8 +500,8 @@ class UsbIssBattery(object):
             Method returns True if everything OK. False if the level 1 limits have been exceeded.
         """
         try:
-            c_ovp = self.pack_variables['cv_max'] > BATTERY_CELL_OVP_LEVEL_1
-            c_uvp = self.pack_variables['cv_min'] < BATTERY_CELL_UVP_LEVEL_1
+            c_ovp = self.pack_variables['cv_max'] > settings.BATTERY_CELL_OVP_LEVEL_1
+            c_uvp = self.pack_variables['cv_min'] < settings.BATTERY_CELL_UVP_LEVEL_1
             
             if c_uvp:
                 log_battery.info('Cell undervoltage, level 1 on port: %s', self.COMPORT)
@@ -492,7 +517,7 @@ class UsbIssBattery(object):
                 return True
         except Exception as err:
             log_battery.exception('Exception in checking cell safety level 1 on port %s. Exception is: %s', self.COMPORT, err)
-            return -1
+            return False
         
     
     def check_safety_level_2(self):
@@ -500,11 +525,11 @@ class UsbIssBattery(object):
             Method return True if everything OK. False if a test stop trigger should be issued.
         """
         try:
-            c_ovp = self.cv_max > self.cell_overvoltage_level_2
-            c_uvp = self.cv_min < self.cell_undervoltage_level_2
-            ocp = self.dc_current > self.pack_overcurrent
-            ovt_mosfet = self.mosfet_temp > self.pack_overtemperature_mosfet
-            ovt_cells = self.pack_temp > self.pack_overtemperature_cells
+            c_ovp = self.pack_variables['cv_max'] > settings.BATTERY_CELL_OVP_LEVEL_2
+            c_uvp = self.pack_variables['cv_min'] < settings.BATTERY_CELL_UVP_LEVEL_2
+            ocp = self.pack_variables['dc_current'] > settings.BATTERY_OCP
+            ovt_mosfet = self.pack_variables['mosfet_temp'] > settings.MOSFETS_OVERTEMPERATURE
+            ovt_cells = self.pack_variables['pack_temp'] > settings.CELLS_OVERTEMPERATURE
             if c_ovp: 
                 log_battery.info('Cell over-voltage, level 2. Port: %s', self.COMPORT)
                 self.pack_variables['is_cell_overvoltage_level_2'] = True
@@ -534,5 +559,9 @@ class UsbIssBattery(object):
                 return True
         except Exception as err:
             log_battery.exception('Error in checking safety level 2 on port %s. Exception is: %s', self.COMPORT, err)
-            return -1
+            return False
+        
+    def stop_and_release(self):
+        pass
+        
                 

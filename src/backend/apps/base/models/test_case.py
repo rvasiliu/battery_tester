@@ -5,6 +5,8 @@ from django.db.models.signals import pre_save, post_save
 from ..models import Inverter, InverterPool, Battery
 from ..tasks import main_task
 
+from ..log import log_test_case
+
 
 class TestCase(models.Model):
     TEST_CASE_STATES = (
@@ -28,6 +30,26 @@ class TestCase(models.Model):
         """
         pass
 
+    def cc_charge(self):
+        """
+            Method encapsulates a cc_charge step
+        """
+        
+        pass
+    
+    def cc_discharge(self):
+        """
+            Method encapsulates a cc_dischage step
+        """
+        pass
+    
+    def rest(self):
+        """
+            Method encapsulates a rest step
+        """
+        pass
+    
+    
 
 @receiver(post_save, sender=TestCase, dispatch_uid="start_test_task")
 def start_test_task(sender, instance, **kwargs):

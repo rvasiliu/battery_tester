@@ -189,6 +189,14 @@ LOGGING = {
             'maxBytes': MAX_BYTES,
             'backupCount': BACKUP_COUNT,
         },
+        'test_case': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'verbose',
+            'filename': os.path.join(BASE_DIR, 'logs', 'test_case.log'),
+            'maxBytes': MAX_BYTES,
+            'backupCount': BACKUP_COUNT,
+        }
     },
     'loggers': {
         'django': {
@@ -220,6 +228,10 @@ LOGGING = {
             'handlers': ['inverter_pool'],
             'level': 'INFO',
         },
+        'test_case':{
+            'handlers': ['test_case'],
+            'level': 'INFO',
+        }
     }
 }
 
@@ -277,5 +289,7 @@ BATTERY_CELL_OVP_LEVEL_2 = 3.7
 BATTERY_CELL_UVP_LEVEL_1 = 2.9
 BATTERY_CELL_UVP_LEVEL_2 = 2.8
 BATTERY_OCP = 35
-MOSFET_OVERTEMPERATURE = 80
+MOSFETS_OVERTEMPERATURE = 80
 CELLS_OVERTEMPERATURE = 50
+
+LOOKUP_TABLE = 'path/to/test_recipe.csv'
