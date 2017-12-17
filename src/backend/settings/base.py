@@ -173,6 +173,30 @@ LOGGING = {
             'maxBytes': MAX_BYTES,
             'backupCount': BACKUP_COUNT,
         },
+        'inverter': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'verbose',
+            'filename': os.path.join(BASE_DIR, 'logs', 'inverter.log'),
+            'maxBytes': MAX_BYTES,
+            'backupCount': BACKUP_COUNT,
+        },
+        'inverter_pool': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'verbose',
+            'filename': os.path.join(BASE_DIR, 'logs', 'inverter_pool.log'),
+            'maxBytes': MAX_BYTES,
+            'backupCount': BACKUP_COUNT,
+        },
+        'test_case': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'verbose',
+            'filename': os.path.join(BASE_DIR, 'logs', 'test_case.log'),
+            'maxBytes': MAX_BYTES,
+            'backupCount': BACKUP_COUNT,
+        }
     },
     'loggers': {
         'django': {
@@ -196,6 +220,18 @@ LOGGING = {
             'handlers': ['battery'],
             'level': 'INFO',
         },
+        'inverter': {
+            'handlers': ['inverter'],
+            'level': 'INFO',
+        },
+        'inverter_pool': {
+            'handlers': ['inverter_pool'],
+            'level': 'INFO',
+        },
+        'test_case':{
+            'handlers': ['test_case'],
+            'level': 'INFO',
+        }
     }
 }
 
@@ -244,3 +280,16 @@ CELERY_PASSWORD = get_secret('CELERY_PASSWORD')
 CELERY_HOST = 'localhost'
 CELERY_VHOST = 'battery_tester'
 SMSBOX_STATUS_CHECK_QUEUE = 'check_sms_box'
+
+CHARGING_SETPOINT = -500
+INVERTING_SETPOINT = 500
+
+BATTERY_CELL_OVP_LEVEL_1 = 3.6
+BATTERY_CELL_OVP_LEVEL_2 = 3.7
+BATTERY_CELL_UVP_LEVEL_1 = 2.9
+BATTERY_CELL_UVP_LEVEL_2 = 2.8
+BATTERY_OCP = 35
+MOSFETS_OVERTEMPERATURE = 80
+CELLS_OVERTEMPERATURE = 50
+
+LOOKUP_TABLE = os.path.join(BASE_DIR, 'settings/test_recipe.csv')
