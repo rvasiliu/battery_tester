@@ -1,11 +1,8 @@
 import ctypes
 
 from django.db import models
-from django.dispatch import receiver
-from django.db.models.signals import post_save
 
 from ..models import InverterPool
-
 from ..log import log_inverter as log
 from ..utils import VictronMultiplusMK2VCP
 
@@ -48,8 +45,8 @@ class Inverter(models.Model):
     @property
     def inverter_utilities(self):
         # get the instance from the class attribute if it's already there
-        if self.port in VictronMultiplusMK2VCP.invertor_instances:
-            return VictronMultiplusMK2VCP.invertor_instances[self.port]
+        if self.port in VictronMultiplusMK2VCP.inverter_instances:
+            return VictronMultiplusMK2VCP.inverter_instances[self.port]
         # if not, create it and store it on the class attribute
         victron_instance = VictronMultiplusMK2VCP(self.port)
         VictronMultiplusMK2VCP.inverter_instances[self.port] = victron_instance
