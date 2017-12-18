@@ -15,6 +15,7 @@ from .log import log_battery as log_battery
 import serial
 import time
 import struct
+from backend.apps.base.log import log_test_case
 
 
 class VictronMultiplusMK2VCP(object):
@@ -64,7 +65,26 @@ class VictronMultiplusMK2VCP(object):
         except Exception as err:
             log_inverter.exception('Could not close inverter port %s because %s', self.com_port, err)
             return False
-
+    
+    def prepare_inverter(self):
+        """
+            This method will ensure the inverter is in a state ready to be used during the test.
+            1. It will configure the VE bus 
+            2. It will verify that the comport is open and if it is not it will attempt to open it.
+        """
+        try:
+            if self.serial_handle.is_open:
+                self.configure_ve_bus()
+                return True
+            else:
+                self.serial_handle.open()
+                self.configure_ve_bus()
+                return True
+        except Exception as err:
+            log_test_case.exception('Error encountered in preparing the inverter for tet on port: %s. Error is: %s.', self.com_port, err)
+            return False
+                
+    
     def configure_ve_bus(self):
         """
             This method does the start-up procedure on the inverter (resets the Mk2 etc)

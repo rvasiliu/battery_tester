@@ -39,37 +39,40 @@ class TestCase(models.Model):
         battery_instance = self.battery.battery_utilities
         inverter_instance = self.inverter.inverter_utilities
         
+       
+        
         for i in range(0,len(df_recipe)):
             log_test_case.info('Proceeding to step %s in test case with ID: %s.', i, self.id)
-            try:
-                if df_recipe.step_type[i] == 'CC Charge':
-                    log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
-                    self.cc_charge(battery_instance=battery_instance, 
-                                   inverter_instance=inverter_instance,
-                                   start_timestamp=time.time(),
-                                   timeout_seconds = df_recipe.timeout_seconds[i])
-                
-                elif df_recipe.step_type[i] == 'CC Discharge':
-                    log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
-                    self.cc_discharge(battery_instance=battery_instance, 
-                                   inverter_instance=inverter_instance,
-                                   start_timestamp=time.time(),
-                                   timeout_seconds = df_recipe.timeout_seconds[i])
+            if inverter_instance.prepare_inverter():
+                try:
+                    if df_recipe.step_type[i] == 'CC Charge':
+                        log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
+                        self.cc_charge(battery_instance=battery_instance, 
+                                       inverter_instance=inverter_instance,
+                                       start_timestamp=time.time(),
+                                       timeout_seconds = df_recipe.timeout_seconds[i])
                     
-                
-                elif df_recipe.step_type[i] == 'Rest':
-                    log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
-                    self.rest(battery_instance=battery_instance, 
-                                   inverter_instance=inverter_instance,
-                                   start_timestamp=time.time(),
-                                   timeout_seconds = df_recipe.timeout_seconds[i])
+                    elif df_recipe.step_type[i] == 'CC Discharge':
+                        log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
+                        self.cc_discharge(battery_instance=battery_instance, 
+                                       inverter_instance=inverter_instance,
+                                       start_timestamp=time.time(),
+                                       timeout_seconds = df_recipe.timeout_seconds[i])
+                        
                     
-                
-                else:
-                    log_test_case.info('Unrecognised Step Type in test case with ID: %s', self.id)
-            except Exception as err:
-                log_test_case.exception('Error while attempting to run test step %. Error is %s.', i, err)
-                
+                    elif df_recipe.step_type[i] == 'Rest':
+                        log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
+                        self.rest(battery_instance=battery_instance, 
+                                       inverter_instance=inverter_instance,
+                                       start_timestamp=time.time(),
+                                       timeout_seconds = df_recipe.timeout_seconds[i])
+                        
+                    
+                    else:
+                        log_test_case.info('Unrecognised Step Type in test case with ID: %s', self.id)
+                except Exception as err:
+                    log_test_case.exception('Error while attempting to run test step %. Error is %s.', i, err)
+                    
                     
 
     def cc_charge(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds = 0):
