@@ -86,4 +86,4 @@ def start_test_task(sender, instance, **kwargs):
         # log.info('dispatching main task for test case id: %s', instance.id)
 
         # main_task.delay(instance.id)
-        periodic_task_implement.apply_async()
+        main_task.apply_async(queue='main_com_{}'.format(instance))
