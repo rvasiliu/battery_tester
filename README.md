@@ -65,6 +65,6 @@
 #### Other Django commands:
 * db migration commands
 
-** ```manage.py makemigrations```
-
-** ```manage.py migrate```
+  1.```manage.py makemigrations```
+ 
+  2.```manage.py migrate```
