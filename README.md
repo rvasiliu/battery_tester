@@ -2,8 +2,13 @@
 
 ### Virtual environment
 
-#### Create virtualenv ```mkvirtualenv battery_tester```
-#### Activate virtualenv ```workon battery_tester```
+#### Create virtualenv
+
+```mkvirtualenv battery_tester```
+
+#### Activate virtualenv
+
+```workon battery_tester```
 
 ### Installation
 
@@ -60,6 +65,6 @@
 #### Other Django commands:
 * db migration commands
 
-```manage.py makemigrations```
+** ```manage.py makemigrations```
 
-```manage.py migrate```
+** ```manage.py migrate```
