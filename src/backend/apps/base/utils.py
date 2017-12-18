@@ -561,4 +561,21 @@ class UsbIssBattery(object):
             return False
 
     def stop_and_release(self):
+        """
+            Method shuts down the mosfets and releases the serial port
+        """
+        #self.turn_pack_off()
+        self.close_coms()
         pass
+    
+    def clear_level_1_error_flag(self):
+        """
+            Method clears the level_1_error_flag
+        """
+        try:
+            self.pack_variables['is_not_safe_level_1'] = False
+            return True
+        except Exception as err:
+            log_battery.exception('Unable to clear error fral level 1 in batt on port %s. Reason is %s', self.com_port, err)
+            return False
+    

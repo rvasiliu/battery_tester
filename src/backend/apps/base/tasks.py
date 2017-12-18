@@ -49,9 +49,10 @@ def send_battery_keep_alive(self, battery_id, keep_alive):
 
 
 @shared_task(bind=True)
-def safety_check(self, battery_id, inv_periodic_task_id, bat_periodic_task_id, main_task_id):
-    from .models import Battery
+def safety_check(self, battery_id, inverter_id, inv_periodic_task_id, bat_periodic_task_id, main_task_id):
+    from .models import Battery, Inverter
     battery = Battery.objects.get(id=battery_id)
+    inverter = Inverter.objects.get(id=inverter_id)
     # TODO
     # check battery parameters
     # if not ok:
@@ -91,7 +92,7 @@ def safety_check(self, battery_id, inv_periodic_task_id, bat_periodic_task_id, m
 
     #stop inverter, stop battery
     battery.battery_utilities.stop_and_release()
-    #inverter.inverter_utilities.stop_and_release()
+    inverter.inverter_utilities.stop_and_release()
     
     # setting test_case result
     test_case = battery.test_case.all()[0]
@@ -115,3 +116,12 @@ def main_task(self, test_case_id):
     safety_check.delay(battery.id, inv_periodic_task, bat_periodic_task, self.request.id)
     # TODO
     # main logic
+
+
+@shared_task(bind=True)
+def test_task(self):
+    from .models import Battery
+    #battery = Battery.objects.get(id=battery_id)
+    print('battery id is: %s.')
+    return True
+    
