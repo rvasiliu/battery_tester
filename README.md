@@ -1,37 +1,65 @@
-# Celery start command:
+# Installation:
 
-#### Start workers
+### Virtual environment
 
-```celery -A backend worker --app=backend.celery:app -l info -c 5 --pool=eventlet -Q main_com_0, main_com_1, periodic_com_0, periodic_com_1```
+#### Create virtualenv ```mkvirtualenv battery_tester```
+#### Activate virtualenv ```workon battery_tester```
 
-#### Start the beat
+### Installation
 
-```celery -A backend --app=backend.celery:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler```
+#### Install requirements
 
-#### Remove tasks from queue
+``` pip install -r requirements/pip```
 
-```celery -A backend --app=backend.celery:app purge```
+#### Install rabbitmq
 
-# Setup RabbitMQ
+##### Ubuntu
+
+```sudo apt-get install rabbitmq```
+
+##### Mac OS X
+
+```brew install rabbitmq```
+
+##### Windows
 
 ```rabbitmq command (https://cmatskas.com/getting-started-with-rabbitmq-on-windows/)```
 
-```rabbitmq-plugins.bat enable rabbitmq_management```
+### Configuration
 
-```rabbitmqctl add_user <username> <password>```
+#### Configure rabbitmq
 
-```rabbitmqctl add_vhost <vhost>```
+*  enable management plugin ```rabbitmq-plugins.bat enable rabbitmq_management```
 
-```rabbitmqctl set_permissions -p <vhost> <username> ".*" ".*" ".*"```
+* create a new rabbitmq user ```rabbitmqctl add_user <username> <password>``` (get the user from the secrets.json)
 
-# Django:
+* create a new rabbitmq virtual host ```rabbitmqctl add_vhost <vhost>``` (get the CELERY_VHOST from settings.base.py)
 
-```Manage.py runserver ip:port```
-```Manage.py makemigrations```
-```Manage.py migrate```
+* allow the user admin rights ```rabbitmqctl set_permissions -p <vhost> <username> ".*" ".*" ".*"```
 
-# Python:
+### Run
 
-```Workon```
-```Deactivate```
-```mkvirtualenv```
+#### Django app
+
+* start the server ```python manage.py runserver 0.0.0.0:8000```
+
+#### Celery commands:
+
+* start workers
+
+```celery -A backend worker --app=backend.celery:app -l info -c 5 --pool=eventlet -Q main_com_0, main_com_1, periodic_com_0, periodic_com_1```
+
+* start the celery beat(scheduler) using the django-celery-beat with django database scheduler
+
+```celery -A backend --app=backend.celery:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler```
+
+* Remove tasks from queue
+
+```celery -A backend --app=backend.celery:app purge```
+
+#### Other Django commands:
+* db migration commands
+
+```manage.py makemigrations```
+
+```manage.py migrate```
