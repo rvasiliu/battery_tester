@@ -2,11 +2,11 @@
 
 #### Start workers
 
-```celery -A backend worker --app=backend.celery:app -l info -c 5 --pool=eventlet```
+```celery -A backend worker --app=backend.celery:app -l info -c 5 --pool=eventlet -Q main_com_0, main_com_1, periodic_com_0, periodic_com_1```
 
 #### Start the beat
 
-```celery -A backend --app=backend.celery:app beat -l info```
+```celery -A backend --app=backend.celery:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler```
 
 #### Remove tasks from queue
 
