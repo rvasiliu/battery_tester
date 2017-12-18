@@ -2,7 +2,7 @@ import time
 import json
 
 from celery import shared_task
-from celery.app.control import Control
+from celery import current_app
 
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
@@ -50,7 +50,9 @@ def send_battery_keep_alive(self, battery_id, keep_alive):
 
 
 @shared_task(bind=True)
-def safety_check(self, battery_id, inverter_id, test_case_id, inv_periodic_task_id, bat_periodic_task_id, main_task_id):
+def safety_check(self, battery_id, inverter_id, test_case_id,
+                 inv_periodic_task_id, bat_periodic_task_id, main_task_id,
+                 name):
     """
     This should check the battery parameters. It should detect a faulty state and stop the whole flow.
     :param self:
@@ -76,30 +78,38 @@ def safety_check(self, battery_id, inverter_id, test_case_id, inv_periodic_task_
     # 5. stop main task
 
     # add code to check the battery parameter(or just call a method of the battery object
-
+    log_bat.info('before parameters check')
     if not battery.battery_utilities.check_safety_level_2():
         # stop rig here
-        
+        log_bat.info('battery params failed')
         # stop the periodic tasks: bat and inv
         periodic_tasks = PeriodicTask.objects.filter(id__in=[inv_periodic_task_id, bat_periodic_task_id])
         log_bat.info('tasks that should be stopped: %s', periodic_tasks)
         # killing all the periodic tasks
         periodic_tasks.delete()
+        log_bat.info('stopped periodic tasks')
         
-        # setting test_case result
-        test_case.state = 'FINISHED'
-        test_case.result = 'ERROR'
-        test_case.description = 'failed because of ...'
-        test_case.save()
+        log_bat.info('setting statuses and result for test_case')
+        # setting test_case
+#         test_case.state = 'FINISHED'
+#         test_case.result = 'ERROR'
+#         test_case.description = 'failed because of ...'
+        test_case.save(update_fields={'state':'FINISHED', 'result': 'ERROR', 'description': 'failed because of ...'})
     
         #stop inverter, stop battery
-        battery.battery_utilities.stop_and_release()
-        inverter.inverter_utilities.stop_and_release()
-    
-        safety_check_task = PeriodicTask.objects.get(id=self.request.id)
-        safety_check_task.delete()
-        # stop the main task
-        Control.revoke(main_task_id, terminate=True)
+#         battery.battery_utilities.stop_and_release()
+#         inverter.inverter_utilities.stop_and_release()
+        log_bat.info('removing safety_check task from the scheduler')
+        try:
+            safety_check_task = PeriodicTask.objects.get(name=name)
+            safety_check_task.delete()
+        except Exception as err:
+            log_bat.exception('unable to get the safety check task')
+        # stop the main
+        log_bat.info('stopping the main task')
+        log_bat.info(dir(self))
+        current_app.control.revoke(task_id=main_task_id, terminate=True)
+        log_bat.info('main_task stopped')
         
 
 @shared_task(bind=True)
@@ -116,33 +126,34 @@ def main_task(self, test_case_id):
     s5_schedule, created = IntervalSchedule.objects.get_or_create(every=5, period=IntervalSchedule.SECONDS)
     
     
-    val = inverter.inverter_utilities.send_setpoint()
+    val = 10# inverter.inverter_utilities.send_setpoint()
     log_main.info('send_setpoint returns %s', val)
     # create the send_inverter_setpoint periodic task
     inv_periodic_task = PeriodicTask.objects.create(
         interval=s5_schedule,  # we created this above.
-        name=json.dumps('InverterPT_{}'.format(int(time.time()))),  # simply describes this periodic task.
+        name='InverterPT_{}'.format(int(time.time())),  # simply describes this periodic task.
         task="backend.apps.base.tasks.send_inverter_setpoint",  # name of task.
         args=json.dumps([inverter.id, val]),
         queue='periodic_com_{}'.format(inverter.port)
     )
     log_main.info('periodic task send_inverter_setpoint scheduled')
 
-    val = battery.battery_utilities.update_values()
+    val = 11#battery.battery_utilities.update_values()
     log_main.info('Update_values returns %s', val)
     # create the send_inverter_setpoint periodic task
     bat_periodic_task = PeriodicTask.objects.create(
         interval=s5_schedule,  # we created this above.
-        name=json.dumps('USBISSPT_{}'.format(time.time())),  # simply describes this periodic task.
+        name='USBISSPT_{}'.format(int(time.time())),  # simply describes this periodic task.
         task='backend.apps.base.tasks.send_battery_keep_alive',  # name of task.
         args=json.dumps([battery.id, val]),
         queue='periodic_com_{}'.format(battery.port)
     )
     log_main.info('periodic task send_battery_keep_alive scheduled')
     # create the safety_check periodic task
+    task_name = 'SafetyPT_{}'.format(int(time.time()))
     safety_check_periodic_task = PeriodicTask.objects.create(
         interval=s5_schedule,  # we created this above.
-        name=json.dumps('SafetyPT_{}'.format(time.time())),  # simply describes this periodic task.
+        name=task_name,  # simply describes this periodic task.
         task='backend.apps.base.tasks.safety_check',  # name of task.
         args=json.dumps([battery.id,
                         inverter.id,
@@ -150,10 +161,11 @@ def main_task(self, test_case_id):
                         inv_periodic_task.id,
                         bat_periodic_task.id,
                         self.request.id,
+                        task_name
                         ]),
         queue='periodic_com_{}'.format(battery.port)
     )
     log_main.info('periodic task send_battery_keep_alive scheduled')
-    time.sleep(60)
+    time.sleep(100)
     # TODO
     # main logic
