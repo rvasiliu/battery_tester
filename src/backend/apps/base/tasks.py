@@ -91,11 +91,17 @@ def safety_check(self, battery_id, inverter_id, test_case_id,
         
         log_bat.info('setting statuses and result for test_case')
         # setting test_case
-#         test_case.state = 'FINISHED'
-#         test_case.result = 'ERROR'
-#         test_case.description = 'failed because of ...'
-        test_case.save(update_fields={'state':'FINISHED', 'result': 'ERROR', 'description': 'failed because of ...'})
-    
+        test_case.state = 'FINISHED'
+        test_case.result = 'ERROR'
+        test_case.description = 'failed because of ...'
+        test_case.save()
+
+        # stop the main
+        log_bat.info('stopping the main task %s', main_task_id)
+        log_bat.info(dir(self))
+        current_app.control.revoke(task_id=main_task_id, terminate=True)
+        log_bat.info('main_task stopped')
+
         #stop inverter, stop battery
 #         battery.battery_utilities.stop_and_release()
 #         inverter.inverter_utilities.stop_and_release()
@@ -105,11 +111,7 @@ def safety_check(self, battery_id, inverter_id, test_case_id,
             safety_check_task.delete()
         except Exception as err:
             log_bat.exception('unable to get the safety check task')
-        # stop the main
-        log_bat.info('stopping the main task')
-        log_bat.info(dir(self))
-        current_app.control.revoke(task_id=main_task_id, terminate=True)
-        log_bat.info('main_task stopped')
+
         
 
 @shared_task(bind=True)
@@ -166,6 +168,8 @@ def main_task(self, test_case_id):
         queue='periodic_com_{}'.format(battery.port)
     )
     log_main.info('periodic task send_battery_keep_alive scheduled')
-    time.sleep(100)
+    while 1:
+        time.sleep(2)
+        log_main.info('main_task logic')
     # TODO
     # main logic
