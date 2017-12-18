@@ -53,7 +53,8 @@ class VictronMultiplusMK2VCP(object):
             log_inverter.info('Opened port to inverter on %s', self.com_port)
         except Exception as err:
             log_inverter.exception('Could not open port to inverter on %s. Error is: %s', self.com_port, err)
-
+        
+        
     def close_coms(self):
         """
             Closes the serial resource for the inverter
@@ -296,10 +297,8 @@ class VictronMultiplusMK2VCP(object):
             self.stop()
             self.close_coms()
             log_inverter.info('Stopped and released inverter on port %s.', self.com_port)
-            return True
         except Exception as err:
             log_inverter.exception('Was unable to stop and release inverter on port %s. Reason: %s.', self.com_port, err)
-            return False
 
 
 class UsbIssBattery(object):
@@ -332,6 +331,8 @@ class UsbIssBattery(object):
                           'is_on': False,
                           'last_status_update': time.time()
                           }
+        
+        self.start_timestamp = time.time()
 
         self.com_port = com_port
 
@@ -344,6 +345,7 @@ class UsbIssBattery(object):
             self.serial_handle.setDTR(False)
             self.serial_handle.bytesize = serial.EIGHTBITS
             self.serial_handle.stopbits = serial.STOPBITS_TWO
+            self.serial_handle.open()
         except Exception as err:
             log_battery.exception('Cannot open comms to battery on port %s because of the following error: %s', self.com_port, err)
 
@@ -400,7 +402,7 @@ class UsbIssBattery(object):
             self.serial_handle.reset_input_buffer()
             self.serial_handle.write(message)
             time.sleep(0.1)
-            self.status_message = self.USB_ISS.read(100)
+            self.status_message = self.serial_handle.read(100)
 
             crc = 0
             # what is the hell? is that a dict or a list?
@@ -417,7 +419,7 @@ class UsbIssBattery(object):
             log_battery.exception('Could not refresh pack values on port %s. Reason: %s.', self.com_port, err)
             return False
 
-    def update_values(self, com_port_handle):
+    def update_values(self):
         """
             Call this function to update all the model attributes that are read from the battery.
         """
@@ -429,9 +431,9 @@ class UsbIssBattery(object):
             self.get_pack_current()
             self.get_cell_voltages()
             self.get_temperatures()
-            log_battery.info('Pack values updated. Pack serial number: %s', self.serial_number)
-            log_battery.info('Pack cell voltages: %s, %s, %s, %s, %s, %s, %s, %s, %s', self.cv_1,
-                     self.cv_2, self.cv_3, self.cv_4, self.cv_5, self.cv_6, self.cv_7, self.cv_8, self.cv_9)
+            log_battery.info('Pack values updated. Pack serial number:')
+#             log_battery.info('Pack cell voltages: %s, %s, %s, %s, %s, %s, %s, %s, %s', self.cv_1,
+#                      self.cv_2, self.cv_3, self.cv_4, self.cv_5, self.cv_6, self.cv_7, self.cv_8, self.cv_9)
             self.pack_variables['last_status_update'] = time.time()
             return True
         except Exception as err:
@@ -543,6 +545,11 @@ class UsbIssBattery(object):
         """
             Method return True if everything OK. False if a test stop trigger should be issued.
         """
+        
+        if time.time()-self.start_timestamp >= 20:
+            return False
+        return True
+
         try:
             c_ovp = self.pack_variables['cv_max'] > settings.BATTERY_CELL_OVP_LEVEL_2
             c_uvp = self.pack_variables['cv_min'] < settings.BATTERY_CELL_UVP_LEVEL_2
@@ -586,7 +593,6 @@ class UsbIssBattery(object):
         """
         #self.turn_pack_off()
         self.close_coms()
-        pass
     
     def clear_level_1_error_flag(self):
         """

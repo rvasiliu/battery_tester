@@ -142,9 +142,10 @@ class TestCase(models.Model):
 @receiver(post_save, sender=TestCase, dispatch_uid="start_test_task")
 def start_test_task(sender, instance, **kwargs):
     created = kwargs.get('created', False)
-    if created:
+#     if created:
         # dispatch add task
         # log.info('dispatching main task for test case id: %s', instance.id)
 
         # main_task.delay(instance.id)
-        main_task.apply_async(queue='main_com_{}'.format(instance))
+    main_task.apply_async((instance.id,), queue='main_com_{}'.format(instance.battery.port))
+    log_test_case.info('main_com_{}'.format(instance.battery.port))
