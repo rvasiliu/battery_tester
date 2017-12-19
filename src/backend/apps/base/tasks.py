@@ -116,6 +116,7 @@ def safety_check(self, battery_id, inverter_id, test_case_id,
 
 @shared_task(bind=True)
 def main_task(self, test_case_id):
+    time.sleep(1)
     from .models import TestCase
     test_case = TestCase.objects.get(id=test_case_id)
     battery = test_case.battery
