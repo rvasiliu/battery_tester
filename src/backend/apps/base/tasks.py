@@ -26,7 +26,7 @@ def send_inverter_setpoint(self, inverter_id, set_point):
     :param inverter_id:
     :return:
     """
-    log_inv.info('Send inverter set point: %s', set_point)
+    log_inv.info('In inverter set point: %s', set_point)
     from .models import Inverter
     inverter = Inverter.objects.get(id=inverter_id)
     victron_inv = inverter.inverter_utilities
@@ -42,7 +42,7 @@ def send_battery_keep_alive(self, battery_id, keep_alive):
     :param battery_id:
     :return:
     """
-    log_bat.info('Send battery keep alive: %s', keep_alive)
+    log_bat.info('In battery keep alive: %s', keep_alive)
     from .models import Battery
     battery = Battery.objects.get(id=battery_id)
     usbiss_bat = battery.battery_utilities
@@ -96,12 +96,6 @@ def safety_check(self, battery_id, inverter_id, test_case_id,
         test_case.description = 'failed because of ...'
         test_case.save()
 
-        # stop the main
-        log_bat.info('stopping the main task %s', main_task_id)
-        log_bat.info(dir(self))
-        current_app.control.revoke(task_id=main_task_id, terminate=True)
-        log_bat.info('main_task stopped')
-
         #stop inverter, stop battery
 #         battery.battery_utilities.stop_and_release()
 #         inverter.inverter_utilities.stop_and_release()
@@ -144,7 +138,7 @@ def main_task(self, test_case_id):
     val = 11#battery.battery_utilities.update_values()
     log_main.info('Update_values returns %s', val)
     # create the send_inverter_setpoint periodic task
-    bat_periodic_task = PeriodicTask.objects.create(
+    bat_periodic_task = PeriodicTask.objects.create( 
         interval=s5_schedule,  # we created this above.
         name='USBISSPT_{}'.format(int(time.time())),  # simply describes this periodic task.
         task='backend.apps.base.tasks.send_battery_keep_alive',  # name of task.
@@ -169,8 +163,14 @@ def main_task(self, test_case_id):
         queue='periodic_com_{}'.format(battery.port)
     )
     log_main.info('periodic task send_battery_keep_alive scheduled')
-    while 1:
+
+    while True:
+        test_case = TestCase.objects.get(id=test_case_id)
+        log_main.info('main_task logic %s', test_case.state)
+        if test_case.state == 'FINISHED':
+            break
+
         time.sleep(2)
-        log_main.info('main_task logic')
     # TODO
     # main logic
+    
