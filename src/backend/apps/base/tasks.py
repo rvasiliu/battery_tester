@@ -159,7 +159,7 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
         'pack_overtemperature_cells',
         'error_flag'
     ]
-    bat_field_values = [(field, battery.getattr(field)) for field in battery_fields]
+    bat_field_values = [(field, getattr(battery, field)) for field in battery_fields]
     for field, value in bat_field_values:
         TestResult.objects.create(test_case=test_case_id,
                                   field='bat_{}'.format(field),
@@ -173,7 +173,7 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
         'ac_voltage',
         'setpoint'
     ]
-    inverter_field_values = [(field, inverter.getattr(field)) for field in inverter_fields]
+    inverter_field_values = [(field, getattr(inverter, field)) for field in inverter_fields]
     for field, value in inverter_field_values:
         TestResult.objects.create(test_case=test_case_id,
                                   field='inv_{}'.format(field),
