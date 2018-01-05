@@ -30,7 +30,8 @@ def send_inverter_setpoint(self, inverter_id, set_point):
     from .models import Inverter
     inverter = Inverter.objects.get(id=inverter_id)
     victron_inv = inverter.inverter_utilities
-    # victron_inv.send_setpoint(set_point)
+    victron_inv.set_point = set_point
+    victron_inv.send_setpoint()
 
 
 @shared_task(bind=True)
@@ -112,10 +113,22 @@ def safety_check(self, battery_id, inverter_id, test_case_id,
 def main_task(self, test_case_id):
     time.sleep(1)
     from .models import TestCase
+    from .models import Inverter
+    from .models import Battery
+    
     test_case = TestCase.objects.get(id=test_case_id)
     battery = test_case.battery
     inverter = test_case.inverter
+    
+    # Inverter Setup
+    victron_inv = inverter.inverter_utilities #local instance of the inv utilities for the inverter in use
+    victron_inv.prepare_inverter()
 
+    # Battery Setup
+    battery_instance = battery.battery_utilities
+    battery_instance.configure_USB_ISS()
+    battery_instance.turn_pack_on()
+    
     # create django celery beat periodic task
     # they are like normal django objects with the same methods and query engine
 
@@ -123,7 +136,7 @@ def main_task(self, test_case_id):
     s5_schedule, created = IntervalSchedule.objects.get_or_create(every=5, period=IntervalSchedule.SECONDS)
     
     
-    val = 10# inverter.inverter_utilities.send_setpoint()
+    val = -200# inverter.inverter_utilities.send_setpoint()
     log_main.info('send_setpoint returns %s', val)
     # create the send_inverter_setpoint periodic task
     inv_periodic_task = PeriodicTask.objects.create(
@@ -163,14 +176,22 @@ def main_task(self, test_case_id):
         queue='periodic_com_{}'.format(battery.port)
     )
     log_main.info('periodic task send_battery_keep_alive scheduled')
-
+        
+    
+    
+    ### test the scheduler with the while loop below:
     while True:
         test_case = TestCase.objects.get(id=test_case_id)
         log_main.info('main_task logic %s', test_case.state)
         if test_case.state == 'FINISHED':
             break
 
-        time.sleep(2)
+        time.sleep(20)
+    ### 
+    
+    
+    
+    
     # TODO
     # main logic
     
