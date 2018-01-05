@@ -293,3 +293,9 @@ MOSFETS_OVERTEMPERATURE = 80
 CELLS_OVERTEMPERATURE = 50
 
 LOOKUP_TABLE = os.path.join(BASE_DIR, 'settings/test_recipe.csv')
+QUEUES = {}
+for i in range(10):
+    QUEUES['main_com_{}'.format(i)] = {}
+for i in range(10):
+    QUEUES['periodic_com_{}'.format(i)] = {}
+
