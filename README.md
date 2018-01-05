@@ -28,6 +28,10 @@
 
 ##### Windows
 
+# RabbitMQ
+
+https://stackoverflow.com/questions/14699873/how-to-reset-user-for-rabbitmq-management
+
 ```rabbitmq command (https://cmatskas.com/getting-started-with-rabbitmq-on-windows/)```
 
 ### Configuration
