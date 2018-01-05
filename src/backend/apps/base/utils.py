@@ -15,7 +15,7 @@ from .log import log_battery as log_battery
 import serial
 import time
 import struct
-from backend.apps.base.log import log_test_case
+from backend.apps.base.log import log_test_case, log_battery
 
 
 class VictronMultiplusMK2VCP(object):
@@ -76,13 +76,15 @@ class VictronMultiplusMK2VCP(object):
         try:
             if self.serial_handle.is_open:
                 self.configure_ve_bus()
+                log_inverter.info('Configured VE bus for inverter on port: %s', self.com_port)
                 return True
             else:
                 self.serial_handle.open()
                 self.configure_ve_bus()
+                log_inverter.info('Configured VE bus for inverter on port: %s', self.com_port)
                 return True
         except Exception as err:
-            log_test_case.exception('Error encountered in preparing the inverter for tet on port: %s. Error is: %s.', self.com_port, err)
+            log_test_case.exception('Error encountered in preparing the inverter for test on port: %s. Error is: %s.', self.com_port, err)
             return False
                 
     
@@ -355,9 +357,22 @@ class UsbIssBattery(object):
             This function will take care of configuring the USB-> I2C bridge.
         """
         try:
-            pass
-        except:
-            pass
+            message = b'\x5A\x01'
+            self.serial_handle.write(message)
+            time.sleep(0.5)
+            self.serial_handle.read(10)
+
+            # Setting the mode
+            I2C_mode_message = b'\x5A\x02\x60\x04'
+            self.serial_handle.write(I2C_mode_message)
+            time.sleep(0.5)
+            self.serial_handle.read(10)
+            log_battery.info('Configure the ISS adapter for com: %s', self.com_port)
+            return True
+        except Exception as err:
+            log_battery.exception('Error when configuring the USB ISS bridge on com %s. Error is: %s', self.com_port, err)
+            return False
+        
 
     def turn_pack_on(self, com_port_handle):
         """
