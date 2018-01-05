@@ -59,4 +59,11 @@ class Battery(models.Model):
         usbiss_instance = UsbIssBattery(self.port)
         UsbIssBattery.battery_instances[self.port] = usbiss_instance
         return usbiss_instance
-
+    
+#     def update_values(self):
+#         battery_instance = self.battery_utilities()
+#         
+#         self.cv_1 = battery_instance.pack_variables['cv_1']
+#         
+#         
+#         self.save()

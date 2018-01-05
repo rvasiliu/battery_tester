@@ -330,10 +330,9 @@ class UsbIssBattery(object):
                           'is_pack_overcurrent': False,
                           'is_overtemperature_mosfets': False,
                           'is_overtemperature_cells': False,
-                          'is_on': False,
-                          'last_status_update': time.time()
+                          'is_on': False
                           }
-        
+        self.last_status_update = time.time()
         self.start_timestamp = time.time()
 
         self.com_port = com_port
@@ -374,7 +373,7 @@ class UsbIssBattery(object):
             return False
         
 
-    def turn_pack_on(self, com_port_handle):
+    def turn_pack_on(self):
         """
             This method turns the pack on. Note: function needs to be send every 10 sec minimum to maintain pack on.
             input: com_port handler
@@ -441,19 +440,19 @@ class UsbIssBattery(object):
         try:
             if not self.get_pack_status():
                 log_battery.info('Asked for new status but failed. Either CRC or exception. Port: %s', self.com_port)
-                return False
+                return {}
             self.get_serial_number()
             self.get_pack_current()
             self.get_cell_voltages()
             self.get_temperatures()
-            log_battery.info('Pack values updated. Pack serial number:')
+            log_battery.info('Pack values updated')
 #             log_battery.info('Pack cell voltages: %s, %s, %s, %s, %s, %s, %s, %s, %s', self.cv_1,
 #                      self.cv_2, self.cv_3, self.cv_4, self.cv_5, self.cv_6, self.cv_7, self.cv_8, self.cv_9)
-            self.pack_variables['last_status_update'] = time.time()
-            return True
+            self.last_status_update = time.time()
+            return self.pack_variables
         except Exception as err:
             log_battery.exception('Error encountered while updating pack values. Exception is: %s', err)
-            return False
+            return {}
 
     def get_serial_number(self):
         """
@@ -461,8 +460,10 @@ class UsbIssBattery(object):
         """
         try:
             self.pack_variables['serial_number'] = int.from_bytes(self.status_message[56:60], byteorder = 'little')
+            log_battery.exception('Serial number of Battery on port %s is %s.', self.com_port, self.pack_variables['serial_number'])
             return True
         except Exception as err:
+            log_battery.exception('Error encountered while updating the serial number on com: %s. Error is: %s', self.com_port, err)
             return False
 
     def get_pack_current(self):
@@ -561,10 +562,13 @@ class UsbIssBattery(object):
             Method return True if everything OK. False if a test stop trigger should be issued.
         """
         
-        if time.time()-self.start_timestamp >= 20:
-            return False
+#         if self.last_status_update < self.start_timestamp:
+#             #There has been no update of the cell readings since the start of the test. 
+#             log_battery.info('Check safety level 2 not running yet, not recent enough readings.')
+#             return True   
+         
         return True
-
+        
         try:
             c_ovp = self.pack_variables['cv_max'] > settings.BATTERY_CELL_OVP_LEVEL_2
             c_uvp = self.pack_variables['cv_min'] < settings.BATTERY_CELL_UVP_LEVEL_2

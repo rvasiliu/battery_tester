@@ -111,7 +111,7 @@ class Inverter(models.Model):
                     return frame
                     self.update_DC_frame(message)
 
-                elif message[6] == 8:  # we have AC frame
+                elif message[6] == 8:  # we have AC 
                     print('AC message: ', message)
                     frame = {'type': 'AC',
                              'message': message}

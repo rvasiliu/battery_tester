@@ -11,6 +11,7 @@ from django_celery_beat.models import PeriodicTask, IntervalSchedule
 # log_inv should be used for the inverter tasks
 from .log import log_inverter as log_inv, log_battery as log_bat
 from .log import log_test_case as log_main
+from backend.apps.base.log import log_test_case
 
 
 class MaxRetriesExceededException(Exception):
@@ -32,6 +33,7 @@ def send_inverter_setpoint(self, inverter_id, set_point):
     victron_inv = inverter.inverter_utilities
     victron_inv.set_point = set_point
     victron_inv.send_setpoint()
+    
 
 
 @shared_task(bind=True)
@@ -47,8 +49,16 @@ def send_battery_keep_alive(self, battery_id, keep_alive):
     from .models import Battery
     battery = Battery.objects.get(id=battery_id)
     usbiss_bat = battery.battery_utilities
-    # usbiss_bat.send_keep_alive()
-
+    pack_values = usbiss_bat.update_values()
+    if pack_values:
+        for key in pack_values:
+            if hasattr(battery, key):
+                setattr(battery, key, pack_values[key])
+            else:
+                log_bat.warning('Battery does not have attr: %s', key)
+        battery.save()
+        log_bat.info('Pack values saved in db.')
+    
 
 @shared_task(bind=True)
 def safety_check(self, battery_id, inverter_id, test_case_id,
@@ -128,6 +138,7 @@ def main_task(self, test_case_id):
     battery_instance = battery.battery_utilities
     battery_instance.configure_USB_ISS()
     battery_instance.turn_pack_on()
+    battery_instance.update_values()
     
     # create django celery beat periodic task
     # they are like normal django objects with the same methods and query engine
@@ -189,9 +200,12 @@ def main_task(self, test_case_id):
         time.sleep(20)
     ### 
     
+    safety_check_periodic_task.delete()   
+    inv_periodic_task.delete()
+    bat_periodic_task.delete()
     
     
-    
+    log_test_case.info('Main Task finished naturally. All tasks have been deleted.')
     # TODO
     # main logic
     
