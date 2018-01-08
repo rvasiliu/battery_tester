@@ -117,6 +117,7 @@ def safety_check(self, battery_id, inverter_id, test_case_id,
         except Exception as err:
             log_bat.exception('unable to get the safety check task')
 
+
 @shared_task(bind=True)
 def populate_result(self, battery_id, inverter_id, test_case_id):
     """
@@ -183,6 +184,8 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
                                   value=value,
                                   timestamp=timestamp)
     log_main.info('Inverter values saved to db.')
+    return
+
 
 @shared_task(bind=True)
 def main_task(self, test_case_id):
