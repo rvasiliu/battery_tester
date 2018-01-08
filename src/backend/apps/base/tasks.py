@@ -22,6 +22,22 @@ class MaxRetriesExceededException(Exception):
 
 
 @shared_task(bind=True)
+def inverter_frame_read(self, inverter_id):
+    from .models import Inverter
+    inverter = Inverter.objects.get(id=inverter_id)
+    victron_inv = inverter.inverter_utilities
+    result = victron_inv.get_info_frame_reply()
+    if result:
+        inverter_variables = victron_inv.inverter_variables
+        for field, value in inverter_variables.iteritems():
+            if hasattr(inverter, field):
+                log_main.info('setting %s field on inverter to value: %s', field, value)
+                setattr(inverter, field, value)
+        inverter.save()
+    return
+
+
+@shared_task(bind=True)
 def send_inverter_setpoint(self, inverter_id, set_point):
     """
     This should be a periodic task that keeps the inverter alive.
@@ -36,7 +52,10 @@ def send_inverter_setpoint(self, inverter_id, set_point):
     victron_inv = inverter.inverter_utilities
     victron_inv.set_point = set_point
     victron_inv.send_setpoint()
-    
+    request = victron_inv.request_frames_update()
+    if request:
+        inverter_frame_read.delay(inverter_id)
+    return
 
 
 @shared_task(bind=True)
@@ -120,6 +139,7 @@ def safety_check(self, battery_id, inverter_id, test_case_id,
         except Exception as err:
             log_bat.exception('unable to get the safety check task')
 
+
 @shared_task(bind=True)
 def populate_result(self, battery_id, inverter_id, test_case_id):
     """
@@ -187,6 +207,8 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
                                   value=value,
                                   timestamp=timestamp)
     log_main.info('Inverter values saved to db.')
+    return
+
 
 @shared_task(bind=True)
 def main_task(self, test_case_id):

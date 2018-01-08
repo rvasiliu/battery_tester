@@ -9,13 +9,11 @@ Utils module. Contains object class for the VCP serial configuration (using pyth
 """
 from django.conf import settings
 
-from .log import log_inverter as log_inverter
-from .log import log_battery as log_battery
-
 import serial
 import time
 import struct
-from backend.apps.base.log import log_test_case, log_battery
+import ctypes
+from .log import log_battery, log_inverter
 
 
 class VictronMultiplusMK2VCP(object):
@@ -303,6 +301,80 @@ class VictronMultiplusMK2VCP(object):
             log_inverter.info('Stopped and released inverter on port %s.', self.com_port)
         except Exception as err:
             log_inverter.exception('Was unable to stop and release inverter on port %s. Reason: %s.', self.com_port, err)
+
+    def update_DC_frame(self, message):
+        """
+            Updates the self.dc_current and self.dc_voltage variables.
+        """
+        try:
+            self.inverter_variables['dc_voltage'] = int.from_bytes(message[7:9], byteorder='little') / 100
+            charging_current = int.from_bytes(message[9:12], byteorder='little')
+            discharging_current = int.from_bytes(message[12:15], byteorder='little')
+            self.inverter_variables['dc_current'] = (charging_current + discharging_current) / 100
+
+            return True
+        except Exception as err:
+            log_inverter.exception('Could not update the DC frame because %s', err)
+            return False
+
+    def update_AC_frame(self, message):
+        """
+            Updates the self.ac_voltage and self.ac_current
+        """
+        try:
+            self.inverter_variables['ac_voltage'] = int.from_bytes(message[7:9], byteorder='little') / 100
+            self.inverter_variables['ac_current'] = ctypes.c_int16(int.from_bytes(message[9:11], byteorder='little')) / 100
+
+            return True
+        except Exception as err:
+            log_inverter.exception('Could not update AC frame', err)
+            return False
+
+    def get_info_frame_reply(self):
+        """
+            This function should run continuously and run onto all the incoming bytestream after 'Get frame' Command
+            The function will automatically call an update of the self.ac/dc-voltage/current variables if a suitable reply is detected.
+        """
+        flag = 0
+        r = 15
+        frame = {}
+        start = time.time()
+        timeout = 2
+        while 1:
+            message = b'\x0f\x20'
+            byte = self.get_next_byte()
+            if byte == b'\x0f':
+                new_byte = self.get_next_byte()
+                if new_byte == b' ':
+                    for i in range(r):
+                        new_byte = self.get_next_byte()
+                        message += new_byte
+
+                    if message[6] == 12:
+                        log_inverter.info('DC message: ', message)
+                        frame['DC'] = message
+                        self.update_DC_frame(message)
+                        flag += 1
+
+                    elif message[6] == 8:  # we have AC
+                        log_inverter.info('AC message: ', message)
+                        frame['AC'] = message
+                        self.update_AC_frame(message)
+                        flag += 1
+                    else:
+                        # TODO:
+                        # replace this with a log msg
+                        log_inverter.warning('Message not recognised')
+                else:
+                    pass
+            if time.time() > start + timeout:
+                frame['timeout'] = True
+                log_inverter.warning('Ended through timeout. Messages received: %s', frame)
+                return frame
+
+            if flag == 2 or time.time() > start+timeout:
+                log_inverter.info('Got both messages: %s', frame)
+                return frame
 
 
 class UsbIssBattery(object):
