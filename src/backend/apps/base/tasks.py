@@ -24,6 +24,13 @@ def inverter_frame_read(self, inverter_id):
     inverter = Inverter.objects.get(id=inverter_id)
     victron_inv = inverter.inverter_utilities
     result = victron_inv.get_info_frame_reply()
+    if result:
+        inverter_variables = victron_inv.inverter_variables
+        for field, value in inverter_variables.iteritems():
+            if hasattr(inverter, field):
+                log_main.info('setting %s field on inverter to value: %s', field, value)
+                setattr(inverter, field, value)
+        inverter.save()
     return
 
 
