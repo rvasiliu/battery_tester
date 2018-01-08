@@ -19,6 +19,15 @@ class MaxRetriesExceededException(Exception):
 
 
 @shared_task(bind=True)
+def inverter_frame_read(self, inverter_id):
+    from .models import Inverter
+    inverter = Inverter.objects.get(id=inverter_id)
+    victron_inv = inverter.inverter_utilities
+    result = victron_inv.get_info_frame_reply()
+    return
+
+
+@shared_task(bind=True)
 def send_inverter_setpoint(self, inverter_id, set_point):
     """
     This should be a periodic task that keeps the inverter alive.
@@ -33,7 +42,10 @@ def send_inverter_setpoint(self, inverter_id, set_point):
     victron_inv = inverter.inverter_utilities
     victron_inv.set_point = set_point
     victron_inv.send_setpoint()
-    
+    request = victron_inv.request_frames_update()
+    if request:
+        inverter_frame_read.delay(inverter_id)
+    return
 
 
 @shared_task(bind=True)

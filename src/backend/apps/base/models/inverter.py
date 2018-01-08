@@ -1,4 +1,5 @@
 import ctypes
+import time
 
 from django.db import models
 
@@ -94,33 +95,42 @@ class Inverter(models.Model):
             This function should run continuously and run onto all the incoming bytestream after 'Get frame' Command
             The function will automatically call an update of the self.ac/dc-voltage/current variables if a suitable reply is detected.
         """
-        message = b'\x0f\x20'
+        flag = 0
         r = 15
-        byte = self.get_next_byte()
-        if byte == b'\x0f':
-            new_byte = self.get_next_byte()
-            if new_byte == b' ':
-                for i in range(r):
-                    new_byte = self.get_next_byte()
-                    message = message + new_byte
+        frame = {}
+        start = time.time()
+        timeout = 2
+        while 1:
+            message = b'\x0f\x20'
+            byte = self.get_next_byte()
+            if byte == b'\x0f':
+                new_byte = self.get_next_byte()
+                if new_byte == b' ':
+                    for i in range(r):
+                        new_byte = self.get_next_byte()
+                        message += new_byte
 
-                if message[6] == 12:
-                    print('DC message: ', message)
-                    frame = {'type': 'DC',
-                             'message': message}
-                    return frame
-                    self.update_DC_frame(message)
+                    if message[6] == 12:
+                        print('DC message: ', message)
+                        frame['DC'] = message
+                        self.update_DC_frame(message)
+                        flag += 1
 
-                elif message[6] == 8:  # we have AC 
-                    print('AC message: ', message)
-                    frame = {'type': 'AC',
-                             'message': message}
-                    return frame
-                    self.update_AC_frame(message)
+                    elif message[6] == 8:  # we have AC
+                        print('AC message: ', message)
+                        frame['AC'] = message
+                        self.update_AC_frame(message)
+                        flag += 1
+                    else:
+                        # TODO:
+                        # replace this with a log msg
+                        print('Message not recognised')
                 else:
-                    print('Message not recognised')
-                    frame = {'type': 'Unknown',
-                             'message': message}
-            else:
-                return None
-        return None
+                    pass
+            if time.time() > start + timeout:
+                frame['timeout'] = True
+                return frame
+
+            if flag == 2 or time.time() > start+timeout:
+                return frame
+
