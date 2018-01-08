@@ -539,6 +539,8 @@ class UsbIssBattery(object):
         """
             Method returns True if everything OK. False if the level 1 limits have been exceeded.
         """
+        return False
+        
         try:
             c_ovp = self.pack_variables['cv_max'] > settings.BATTERY_CELL_OVP_LEVEL_1
             c_uvp = self.pack_variables['cv_min'] < settings.BATTERY_CELL_UVP_LEVEL_1

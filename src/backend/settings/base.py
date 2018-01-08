@@ -281,8 +281,8 @@ CELERY_HOST = 'localhost'
 CELERY_VHOST = 'battery_tester'
 SMSBOX_STATUS_CHECK_QUEUE = 'check_sms_box'
 
-CHARGING_SETPOINT = -500
-INVERTING_SETPOINT = 500
+CHARGING_SETPOINT = -200
+INVERTING_SETPOINT = 200
 
 BATTERY_CELL_OVP_LEVEL_1 = 3.6
 BATTERY_CELL_OVP_LEVEL_2 = 3.7
@@ -292,7 +292,7 @@ BATTERY_OCP = 35
 MOSFETS_OVERTEMPERATURE = 80
 CELLS_OVERTEMPERATURE = 50
 
-LOOKUP_TABLE = os.path.join(BASE_DIR, 'settings/test_recipe.csv')
+LOOKUP_TABLE = os.path.join(BASE_DIR, 'backend\settings\test_recipe.csv')
 QUEUES = {}
 for i in range(10):
     QUEUES['main_com_{}'.format(i)] = {}

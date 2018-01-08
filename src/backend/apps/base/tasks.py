@@ -1,9 +1,12 @@
 import time
 import json
 import datetime
+import pandas as pd
 
 from celery import shared_task
 from celery import current_app
+
+from django.conf import settings
 
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
@@ -274,6 +277,16 @@ def main_task(self, test_case_id):
         '',
         '',
     ]
+    
+    ### Main Logic - use test_case model 
+    log_main.info('Attempting to run test_case.run_test() now...')
+    try:
+        test_case.run_test()
+    except Exception as err:
+        log_main.exception('Error during running test %s', err)
+    log_main.info('Test_case.run_test() completed')
+    
+
 
     ### test the scheduler with the while loop below:
     while True:
