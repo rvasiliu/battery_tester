@@ -120,7 +120,7 @@ def safety_check(self, battery_id, inverter_id, test_case_id,
 @shared_task(bind=True)
 def populate_result(self, battery_id, inverter_id, test_case_id):
     """
-    Executes every s60_schedule seconds and populates the test_result table.
+    Executes every X seconds and populates the test_result table.
     battery and inverter models are used for temporary storage of values.
     :param battery_id:
     :param inverter_id:
@@ -159,8 +159,8 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
         'pack_overtemperature_cells',
         'error_flag'
     ]
-    bat_field_values = [(field, getattr(battery, field)) for field in battery_fields]
-    #log_main.info('bat_field_values are: %s', bat_field_values)
+    bat_field_values = [(field, getattr(battery, field)) for field in battery_fields if hasattr(battery, field)]
+    log_main.info('bat_field_values are: %s', bat_field_values)
     for field, value in bat_field_values:
         TestResult.objects.create(test_case=test_case,
                                   field='bat_{}'.format(field),
@@ -176,7 +176,8 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
         'ac_voltage',
         'setpoint'
     ]
-    inverter_field_values = [(field, getattr(inverter, field)) for field in inverter_fields]
+    inverter_field_values = [(field, getattr(inverter, field)) for field in inverter_fields if hasattr(inverter, field)]
+    log_main.info('inverter_field_values are: %s', inverter_field_values)
     for field, value in inverter_field_values:
         TestResult.objects.create(test_case=test_case,
                                   field='inv_{}'.format(field),
@@ -196,6 +197,7 @@ def main_task(self, test_case_id):
     # Inverter Setup
     victron_inv = inverter.inverter_utilities #local instance of the inv utilities for the inverter in use
     victron_inv.prepare_inverter()
+    victron_inv.rest()
 
     # Battery Setup
     battery_instance = battery.battery_utilities
@@ -282,6 +284,9 @@ def main_task(self, test_case_id):
 
         time.sleep(20)
 
+    # stop inverter operation
+    victron_inv.stop()
+    
     # stop all periodic tasks when the main finishes
     safety_check_periodic_task.delete()   
     inv_periodic_task.delete()

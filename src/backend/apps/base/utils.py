@@ -208,8 +208,9 @@ class VictronMultiplusMK2VCP(object):
             Use state to choose state.
         """
         try:
-            self.serial_handle.write(self.make_state_message(state))
-            log_inverter.info('Switched to state %s the inverter on port %s.', state, self.com_port)
+            command = self.make_state_message(state = state)
+            self.serial_handle.write(command)
+            log_inverter.info('Switched to state %s the inverter on port %s. Used command: %s.', state, self.com_port, str(command))
             return True
         except Exception as err:
             log_inverter.exception('Cannot send new state to inverter on port: %s. Error is: %s', self.com_port, err)
@@ -285,7 +286,8 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.set_point = 0
-            self.send_state(0)
+            self.send_state(state = 0)
+            log_inverter.info('Issued a STOP command to inverter on port %s.', self.com_port)
             return True
         except Exception as err:
             log_inverter.exception('Cannot stop the inverter on port %s. Exception is: %s',self.com_port, err)
