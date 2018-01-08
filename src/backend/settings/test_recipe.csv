@@ -1,4 +1,5 @@
 step_id,setpoint,limit_type,v_limit,timeout_seconds,step_type,Steptypes
-1,0,voltage,32,10,Rest,CC Charge
-2,-500,voltage,32,10,CC Charge,CC Discharge
-3,0,voltage,32,10,Rest,Rest
+1,-200,voltage,32,60,CC Charge,CC Charge
+2,-500,voltage,32,20,Rest,CC Discharge
+3,0,voltage,32,60,CC Discharge,Rest
+4,-500,voltage,32,20,Rest,

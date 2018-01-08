@@ -88,7 +88,7 @@ class TestCase(models.Model):
         #2. Every 2 seconds check for battery data and timeout.
         inverter_instance.charge()
         log_test_case.info('Issued charge mode to inverter on port %s.', inverter_instance.com_port)
-        while (time.time()-start_timestamp)>timeout_seconds:
+        while (time.time()-start_timestamp)<timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('Reached level 1 limits during charging on battery on port: %s.', battery_instance.com_port)
                 break
@@ -107,7 +107,7 @@ class TestCase(models.Model):
         inverter_instance.invert()
         log_test_case.info('Issued invert mode to inverter on port %s.', inverter_instance.com_port)
         
-        while (time.time()-start_timestamp)>timeout_seconds:
+        while (time.time()-start_timestamp)<timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('Reached level 1 limits during inverting on battery on port: %s.', battery_instance.com_port)
                 break
@@ -126,7 +126,7 @@ class TestCase(models.Model):
         inverter_instance.rest()
         log_test_case.info('Issued rest mode to inverter on port %s.', inverter_instance.com_port)
         
-        while (time.time()-start_timestamp)>timeout_seconds:
+        while (time.time()-start_timestamp)<timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('Reached level 1 limits during resting battery on port: %s.', battery_instance.com_port)
                 break

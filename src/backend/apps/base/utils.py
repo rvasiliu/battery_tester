@@ -74,7 +74,7 @@ class VictronMultiplusMK2VCP(object):
         try:
             if self.serial_handle.is_open:
                 self.configure_ve_bus()
-                log_inverter.info('Configured VE bus for inverter on port: %s', self.com_port)
+                log_inverter.info('-PREPARE INVERTER- Configured VE bus for inverter on port: %s', self.com_port)
                 return True
             else:
                 self.serial_handle.open()
@@ -116,6 +116,8 @@ class VictronMultiplusMK2VCP(object):
         try:
             message_out = self.make_message_MK2(self.set_point)
             self.serial_handle.write(message_out)
+            time.sleep(0.1)
+            log_inverter.info('Setpoint sent. Setpoint is: %s', self.set_point)
             return True
         except Exception as err:
             log_inverter.exception('Sending power setpoint to the PU failed on port %s because %s', self.com_port, err)
@@ -151,7 +153,7 @@ class VictronMultiplusMK2VCP(object):
             #self.thread_RX.start()  #Start monitoring messages from Power Unit
             message = b'\x03\xffF\x00\xb8'
             self.serial_handle.write(message)
-            log_inverter.info('DC frame Requested on port %s', self.com_port)
+            log_inverter.info('DC frame Requested (message sent) on port %s', self.com_port)
             return True
         except Exception as err:
             log_inverter.exception('Requesting the DC frame (maybe serial timeout?) failed on %s because %s', self.com_port, err)
@@ -164,7 +166,7 @@ class VictronMultiplusMK2VCP(object):
         try:
             message = b'\x03\xffF\x01\xb7'
             self.serial_handle.write(message)
-            log_inverter.info('AC frame Requested on port: %s', self.com_port)
+            log_inverter.info('AC frame Requested (message sent) on port: %s', self.com_port)
             return True
         except Exception as err:
             log_inverter.exception('Requesting the AC frame (maybe serial timeout?) failed on %s because %s', self.com_port, err)
@@ -231,9 +233,10 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.request_AC_frame()
-            self.time.sleep(0.1)
+            time.sleep(0.1)
             self.request_DC_frame()
-            self.time.sleep(0.1)
+            time.sleep(0.1)
+            log_inverter.info('Requested DC and AC frames on inverter')
             return True
         except Exception as err:
             log_inverter.exception('Cannot update frames.', err)
@@ -245,7 +248,8 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.set_point = settings.CHARGING_SETPOINT
-            self.send_state(1)
+            #self.send_state(1)
+            log_inverter.info('Charge mode set on inverter.')
             return True
         except Exception as err:
             log_inverter.exception('Cannot set charge mode on port %s. Exception is: %s', self.com_port, err)
@@ -257,7 +261,7 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.set_point = settings.INVERTING_SETPOINT
-            self.send_state(1)
+            #self.send_state(1)
             return True
         except Exception as err:
             log_inverter.exception('Cannot set invert mode on port %s. Exception is: %s', self.com_port, err)
@@ -269,7 +273,7 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.set_point = 0
-            self.send_state(1)
+            #self.send_state(1)
             return True
         except Exception as err:
             msg = 'Cannot set rest mode. The inverter on port {} is still running? Exception is: {}'.format(
@@ -310,7 +314,7 @@ class VictronMultiplusMK2VCP(object):
             self.inverter_variables['dc_voltage'] = int.from_bytes(message[7:9], byteorder='little') / 100
             charging_current = int.from_bytes(message[9:12], byteorder='little')
             discharging_current = int.from_bytes(message[12:15], byteorder='little')
-            self.inverter_variables['dc_current'] = (charging_current + discharging_current) / 100
+            self.inverter_variables['dc_current'] = (charging_current + discharging_current) / 10
 
             return True
         except Exception as err:
@@ -323,7 +327,7 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.inverter_variables['ac_voltage'] = int.from_bytes(message[7:9], byteorder='little') / 100
-            self.inverter_variables['ac_current'] = ctypes.c_int16(int.from_bytes(message[9:11], byteorder='little')) / 100
+            self.inverter_variables['ac_current'] = ctypes.c_int16(int.from_bytes(message[9:11], byteorder='little')).value /100
 
             return True
         except Exception as err:
@@ -342,40 +346,46 @@ class VictronMultiplusMK2VCP(object):
         timeout = 2
         while 1:
             message = b'\x0f\x20'
-            byte = self.get_next_byte()
-            if byte == b'\x0f':
-                new_byte = self.get_next_byte()
-                if new_byte == b' ':
-                    for i in range(r):
-                        new_byte = self.get_next_byte()
-                        message += new_byte
-
-                    if message[6] == 12:
-                        log_inverter.info('DC message: ', message)
-                        frame['DC'] = message
-                        self.update_DC_frame(message)
-                        flag += 1
-
-                    elif message[6] == 8:  # we have AC
-                        log_inverter.info('AC message: ', message)
-                        frame['AC'] = message
-                        self.update_AC_frame(message)
-                        flag += 1
+            
+            try:
+                byte = self.get_next_byte()
+                if byte == b'\x0f':
+                    new_byte = self.get_next_byte()
+                    if new_byte == b' ':
+                        for i in range(r):
+                            new_byte = self.get_next_byte()
+                            message += new_byte
+    
+                        if message[6] == 12:
+                            #log_inverter.info('DC message: ', str(message))
+                            frame['DC'] = message
+                            self.update_DC_frame(message)
+                            flag += 1
+                            log_inverter.warning('REceived DC frame, flag is: %s', flag)
+    
+                        elif message[6] == 8:  # we have AC
+                            #log_inverter.info('AC message: ', str(message))
+                            frame['AC'] = message
+                            self.update_AC_frame(message)
+                            flag += 1
+                            log_inverter.warning('REceived AC frame, flag is: %s', flag)
+                        else:
+                            # TODO:
+                            # replace this with a log msg
+                            log_inverter.warning('Message not recognised')
                     else:
-                        # TODO:
-                        # replace this with a log msg
-                        log_inverter.warning('Message not recognised')
-                else:
-                    pass
-            if time.time() > start + timeout:
-                frame['timeout'] = True
-                log_inverter.warning('Ended through timeout. Messages received: %s', frame)
+                        pass
+                if time.time() > start + timeout:
+                    frame['timeout'] = True
+                    log_inverter.warning('Ended through timeout. Messages received: %s', frame)
+                    return frame
+    
+                if flag == 2 or time.time() > start+timeout:
+                    #log_inverter.info('Got both messages: %s', frame)
+                    return frame
+            except Exception as err:
+                log_inverter.exception(err)
                 return frame
-
-            if flag == 2 or time.time() > start+timeout:
-                log_inverter.info('Got both messages: %s', frame)
-                return frame
-
 
 class UsbIssBattery(object):
     """
@@ -395,15 +405,15 @@ class UsbIssBattery(object):
                           'cv_min': 0,
                           'mosfet_temp': 0, 'pack_temp': 0,
                           'dc_current': 0,
-                          'is_cell_overvoltage_level_1': False,
-                          'is_cell_overvoltage_level_2': False,
-                          'is_cell_undervoltage_level_1': False,
-                          'is_cell_undervoltage_level_2': False,
+                          'cell_overvoltage_level_1': False,
+                          'cell_overvoltage_level_2': False,
+                          'cell_undervoltage_level_1': False,
+                          'cell_undervoltage_level_2': False,
                           'is_not_safe_level_1': False,
                           'is_not_safe_level_2': False,
-                          'is_pack_overcurrent': False,
-                          'is_overtemperature_mosfets': False,
-                          'is_overtemperature_cells': False,
+                          'pack_overcurrent': False,
+                          'pack_overtemperature_mosfets': False,
+                          'pack_overtemperature_cells': False,
                           'is_on': False
                           }
         self.last_status_update = time.time()
@@ -619,12 +629,12 @@ class UsbIssBattery(object):
 
             if c_uvp:
                 log_battery.info('Cell undervoltage, level 1 on port: %s', self.com_port)
-                self.pack_variables['is_cell_undervoltage_level_1'] = True
+                self.pack_variables['cell_undervoltage_level_1'] = True
                 self.pack_variables['is_not_safe_level_1'] = True
                 return  False
             elif c_ovp:
                 log_battery.info('Cell overvoltage, level 1 on port: %s', self.com_port)
-                self.pack_variables['is_cell_overvoltage_level_1'] = True
+                self.pack_variables['cell_overvoltage_level_1'] = True
                 self.pack_variables['is_not_safe_level_1'] = True
                 return False
             else:
@@ -653,27 +663,27 @@ class UsbIssBattery(object):
             ovt_cells = self.pack_variables['pack_temp'] > settings.CELLS_OVERTEMPERATURE
             if c_ovp:
                 log_battery.info('Cell over-voltage, level 2. Port: %s', self.com_port)
-                self.pack_variables['is_cell_overvoltage_level_2'] = True
+                self.pack_variables['cell_overvoltage_level_2'] = True
                 self.pack_variables['is_not_safe_level_2'] = True
                 return False
             elif c_uvp:
                 log_battery.info('Cell under-voltage, level 2. Port: %s', self.com_port)
-                self.pack_variables['is_cell_undervoltage_level_2'] = True
+                self.pack_variables['cell_undervoltage_level_2'] = True
                 self.pack_variables['is_not_safe_level_2'] = True
                 return False
             elif ocp:
                 log_battery.info('Battery over-current. Port: %s', self.com_port)
-                self.pack_variables['is_pack_overcurrent'] = True
+                self.pack_variables['pack_overcurrent'] = True
                 self.pack_variables['is_not_safe_level_2'] = True
                 return False
             elif ovt_mosfet:
                 log_battery.info('Over-temperature (mosfets) on port: %s', self.com_port)
-                self.pack_variables['is_overtemperature_mosfets'] = True
+                self.pack_variables['pack_overtemperature_mosfets'] = True
                 self.pack_variables['is_not_safe_level_2'] = True
                 return False
             elif ovt_cells:
                 log_battery.info('Over-temperature (mosfets) on port: %s', self.com_port)
-                self.pack_variables['is_overtemperature_cells'] = True
+                self.pack_variables['pack_overtemperature_cells'] = True
                 self.pack_variables['is_not_safe_level_2'] = True
                 return False
             else:
