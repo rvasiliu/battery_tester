@@ -57,7 +57,7 @@ def send_battery_keep_alive(self, battery_id, keep_alive):
             else:
                 log_bat.warning('Battery does not have attr: %s', key)
         battery.save()
-        log_bat.info('Pack values saved in db.')
+        
     
 
 @shared_task(bind=True)
@@ -160,11 +160,14 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
         'error_flag'
     ]
     bat_field_values = [(field, getattr(battery, field)) for field in battery_fields]
+    #log_main.info('bat_field_values are: %s', bat_field_values)
     for field, value in bat_field_values:
-        TestResult.objects.create(test_case=test_case_id,
+        TestResult.objects.create(test_case=test_case,
                                   field='bat_{}'.format(field),
                                   value=value,
                                   timestamp=timestamp)
+        
+    log_main.info('Pack values saved to db.')
     # inverter fields to save
     inverter_fields = [
         'dc_current',
@@ -175,11 +178,11 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     ]
     inverter_field_values = [(field, getattr(inverter, field)) for field in inverter_fields]
     for field, value in inverter_field_values:
-        TestResult.objects.create(test_case=test_case_id,
+        TestResult.objects.create(test_case=test_case,
                                   field='inv_{}'.format(field),
                                   value=value,
                                   timestamp=timestamp)
-
+    log_main.info('Inverter values saved to db.')
 
 @shared_task(bind=True)
 def main_task(self, test_case_id):
@@ -205,7 +208,9 @@ def main_task(self, test_case_id):
 
     # create 5s period schedule. Use this for all the tasks that must run at every 5 seconds
     s5_schedule, created = IntervalSchedule.objects.get_or_create(every=5, period=IntervalSchedule.SECONDS)
+    s10_schedule, created = IntervalSchedule.objects.get_or_create(every=10, period=IntervalSchedule.SECONDS)
     s60_schedule, created = IntervalSchedule.objects.get_or_create(every=60, period=IntervalSchedule.SECONDS)
+    
     val = -200  # inverter.inverter_utilities.send_setpoint()
     log_main.info('send_setpoint returns %s', val)
     # create the send_inverter_setpoint periodic task
@@ -247,9 +252,9 @@ def main_task(self, test_case_id):
 
     task_name = 'Populate_results_{}'.format(test_case.name)
     populate_results_periodic_task = PeriodicTask.objects.create(
-        interval=s60_schedule,  # we created this above.
+        interval=s10_schedule,  # we created this above.
         name=task_name,  # simply describes this periodic task.
-        task='backend.apps.base.tasks.populate_results',  # name of task.
+        task='backend.apps.base.tasks.populate_result',  # name of task.
         args=json.dumps([battery.id,
                         inverter.id,
                         test_case.id]),

@@ -45,7 +45,7 @@ class VictronMultiplusMK2VCP(object):
             self.serial_handle = serial.Serial()
             self.serial_handle.port = self.com_port
             self.serial_handle.baudrate = 2400
-            self.serial_handle.timeout = 0.1
+            self.serial_handle.timeout = 0.5
             self.serial_handle.setDTR(True)
             self.serial_handle.bytesize = serial.EIGHTBITS
             self.serial_handle.stopbits = serial.STOPBITS_ONE
@@ -341,7 +341,7 @@ class UsbIssBattery(object):
             self.serial_handle = serial.Serial()
             self.serial_handle.port = self.com_port
             self.serial_handle.baudrate = 19200
-            self.serial_handle.timeout = 0.1
+            self.serial_handle.timeout = 0.5
             self.serial_handle.parity = 'N'
             self.serial_handle.setDTR(False)
             self.serial_handle.bytesize = serial.EIGHTBITS
@@ -382,10 +382,10 @@ class UsbIssBattery(object):
         try:
             test = b'\x57\x01\x35\x40\x04\x01\x03\x00\x48\x03'
             self.serial_handle.write(test)
-            time.sleep(0.01)
+            time.sleep(0.1)
             test = b'\x57\x01\x30\x41\x20\x03'
             self.serial_handle.write(test)
-            time.sleep(0.01)
+            time.sleep(0.1)
             log_battery.info('Pack on port %s has been turned on.', self.com_port)
             return True
         except Exception as err:
@@ -410,12 +410,12 @@ class UsbIssBattery(object):
         try:
             message = b'\x57\x01\x34\x40\x01\x00\x00\x41\x03'
             self.serial_handle.write(message)
-            time.sleep(0.1)
+            time.sleep(0.2)
             reply = self.serial_handle.read(10)
             message = b'\x54\x41\x3E' #this matches the length of the message read
             self.serial_handle.reset_input_buffer()
             self.serial_handle.write(message)
-            time.sleep(0.1)
+            time.sleep(0.2)
             self.status_message = self.serial_handle.read(100)
 
             crc = 0
