@@ -47,7 +47,7 @@ class TestCase(models.Model):
         
         for i in range(0,len(df_recipe)):
             log_test_case.info('Proceeding to step %s in test case with ID: %s.', i, self.id)
-            if inverter_instance.prepare_inverter():
+            if (self.state == 'FINISHED' or self.state == 'FAILED'):
                 try:
                     if df_recipe.step_type[i] == 'CC Charge':
                         log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
@@ -97,7 +97,7 @@ class TestCase(models.Model):
         
         inverter_instance.rest()
         battery_instance.clear_level_1_error_flag()
-        log_test_case.info('CC charge mode on inverter on port %s finished.', inverter_instance.com_port)
+        log_test_case.info('CC CHARGE mode on inverter on port %s finished.', inverter_instance.com_port)
         return True
     
     def cc_discharge(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds = 0):
@@ -116,7 +116,7 @@ class TestCase(models.Model):
         
         inverter_instance.rest()
         battery_instance.clear_level_1_error_flag()
-        log_test_case.info('CC discharge mode on inverter on port %s finished.', inverter_instance.com_port)
+        log_test_case.info('CC DISCHARGE mode on inverter on port %s finished.', inverter_instance.com_port)
         return True
     
     def rest(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds = 0):
@@ -128,14 +128,15 @@ class TestCase(models.Model):
         
         while (time.time()-start_timestamp)<timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
-                log_test_case.info('Reached level 1 limits during resting battery on port: %s.', battery_instance.com_port)
-                break
+                log_test_case.info('NO ACTION - Reached level 1 limits during resting battery on port: %s.', battery_instance.com_port)
+                #break
+                
             
             time.sleep(2)
         
         inverter_instance.rest()
         battery_instance.clear_level_1_error_flag()
-        log_test_case.info('Rest mode on inverter on port %s finished.', inverter_instance.com_port)
+        log_test_case.info('REST mode on inverter on port %s finished.', inverter_instance.com_port)
         return True
 
 

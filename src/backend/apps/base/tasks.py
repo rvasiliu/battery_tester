@@ -115,21 +115,21 @@ def safety_check(self, battery_id,
     
     if not battery.battery_utilities.check_safety_level_2():
         # stop rig here
-        log_bat.info('battery params failed')
+        log_main.info('Safety LEVEL 2 triggered in safety_check task. Test is: %s',test_case_id )
         # stop the periodic tasks: bat and inv
         periodic_tasks = PeriodicTask.objects.filter(id__in=[inv_periodic_task_id, 
                                                              bat_periodic_task_id,
                                                              populate_results_periodic_task_id])
-        log_bat.info('tasks that should be stopped: %s', periodic_tasks)
+        log_main.info('Following tasks will be stopped: %s', periodic_tasks)
         # killing all the periodic tasks
         periodic_tasks.delete()
-        log_bat.info('stopped periodic tasks')
+        log_main.info('Stopped periodic tasks')
         
-        log_bat.info('setting statuses and result for test_case')
+        log_main.info('setting statuses and result for test_case')
         # setting test_case
         test_case.state = 'FINISHED'
         test_case.result = 'ERROR'
-        test_case.description = 'failed because of ...'
+        test_case.description = 'The test failed in safety check LEVEL 2.'
         test_case.save()
 
         #stop inverter, stop battery
@@ -140,8 +140,17 @@ def safety_check(self, battery_id,
             safety_check_task = PeriodicTask.objects.get(name=name)
             safety_check_task.delete()
         except Exception as err:
-            log_bat.exception('unable to get the safety check task')
+            log_main.exception('Unable to delete the safety check task from the schedule.')
 
+    #Check if test marked as FINISHED. 
+    if test_case.state == 'FINISHED':
+        log_main.info('FINISHED condition detected in safety check. Shutting down.')
+        try:
+            periodic_tasks.delete()
+            safety_check_task = PeriodicTask.objects.get(name=name)
+            safety_check_task.delete()
+        except Exception as err:
+            log_main.exception('Unable to shut down the test: %s', err)
 
 @shared_task(bind=True)
 def populate_result(self, battery_id, inverter_id, test_case_id):
@@ -291,7 +300,7 @@ def main_task(self, test_case_id):
                         task_name]),
         queue='periodic_com_{}'.format(battery.port)
     )
-    log_main.info('periodic task - safety routine - scheduled')
+    log_main.info('Periodic task - safety routine - scheduled')
 
     
     # save the headers in the result table
@@ -325,7 +334,7 @@ def main_task(self, test_case_id):
 # 
 #         time.sleep(20)
 
-    test_case.state == 'FINISHED'
+    test_case.state = 'FINISHED'
     # stop inverter operation
     #victron_inv.stop()
     

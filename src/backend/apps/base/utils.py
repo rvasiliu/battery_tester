@@ -523,7 +523,7 @@ class UsbIssBattery(object):
         """
         try:
             if not self.get_pack_status():
-                log_battery.info('Asked for new status but failed. Either CRC or exception. Port: %s', self.com_port)
+                log_battery.info('Either CRC error or exception when reading from I2C - values discarded. Port: %s', self.com_port)
                 return {}
             self.get_serial_number()
             self.get_pack_current()
@@ -544,7 +544,7 @@ class UsbIssBattery(object):
         """
         try:
             self.pack_variables['serial_number'] = int.from_bytes(self.status_message[56:60], byteorder = 'little')
-            log_battery.exception('Serial number of Battery on port %s is %s.', self.com_port, self.pack_variables['serial_number'])
+            #log_battery.exception('Serial number of Battery on port %s is %s.', self.com_port, self.pack_variables['serial_number'])
             return True
         except Exception as err:
             log_battery.exception('Error encountered while updating the serial number on com: %s. Error is: %s', self.com_port, err)
@@ -621,23 +621,31 @@ class UsbIssBattery(object):
         """
             Method returns True if everything OK. False if the level 1 limits have been exceeded.
         """
-        return False
+        if self.last_status_update < self.start_timestamp + 10:
+            #There has been no update of the cell readings since the start of the test. 
+            log_battery.info('Attempted to run Safety Level 1 routine - battery data will not update in the first 10 seconds of the test.')
+            return True 
         
         try:
-            c_ovp = self.pack_variables['cv_max'] > settings.BATTERY_CELL_OVP_LEVEL_1
-            c_uvp = self.pack_variables['cv_min'] < settings.BATTERY_CELL_UVP_LEVEL_1
-
+            c_ovp = float(self.pack_variables['cv_max']) > settings.BATTERY_CELL_OVP_LEVEL_1
+            c_uvp = float(self.pack_variables['cv_min']) < settings.BATTERY_CELL_UVP_LEVEL_1
+            log_battery.info('Verified level 1 safety conditions on com %s. Max Cell is: %s, Min Cell is: %s.', 
+                             self.com_port, 
+                             self.pack_variables['cv_max'],
+                             self.pack_variables['cv_min'])
+                            
             if c_uvp:
-                log_battery.info('Cell undervoltage, level 1 on port: %s', self.com_port)
+                log_battery.info('Cell undervoltage detected, level 1 on port: %s', self.com_port)
                 self.pack_variables['cell_undervoltage_level_1'] = True
                 self.pack_variables['is_not_safe_level_1'] = True
                 return  False
             elif c_ovp:
-                log_battery.info('Cell overvoltage, level 1 on port: %s', self.com_port)
+                log_battery.info('Cell overvoltage detected, level 1 on port: %s', self.com_port)
                 self.pack_variables['cell_overvoltage_level_1'] = True
                 self.pack_variables['is_not_safe_level_1'] = True
                 return False
             else:
+                log_battery.info('No level 1 protection triggered on port: %s.', self.com_port)
                 return True
         except Exception as err:
             log_battery.exception('Exception in checking cell safety level 1 on port %s. Exception is: %s', self.com_port, err)
@@ -648,19 +656,22 @@ class UsbIssBattery(object):
             Method return True if everything OK. False if a test stop trigger should be issued.
         """
         
-#         if self.last_status_update < self.start_timestamp:
-#             #There has been no update of the cell readings since the start of the test. 
-#             log_battery.info('Check safety level 2 not running yet, not recent enough readings.')
-#             return True   
-         
-        return True
+        if self.last_status_update < self.start_timestamp + 10:
+            #There has been no update of the cell readings since the start of the test. 
+            log_battery.info('Attempted to run Safety Level 2 routine - battery data will not update in the first 10 seconds of the test.')
+            return True 
         
         try:
-            c_ovp = self.pack_variables['cv_max'] > settings.BATTERY_CELL_OVP_LEVEL_2
-            c_uvp = self.pack_variables['cv_min'] < settings.BATTERY_CELL_UVP_LEVEL_2
-            ocp = self.pack_variables['dc_current'] > settings.BATTERY_OCP
-            ovt_mosfet = self.pack_variables['mosfet_temp'] > settings.MOSFETS_OVERTEMPERATURE
-            ovt_cells = self.pack_variables['pack_temp'] > settings.CELLS_OVERTEMPERATURE
+            c_ovp = float(self.pack_variables['cv_max']) > settings.BATTERY_CELL_OVP_LEVEL_2
+            c_uvp = float(self.pack_variables['cv_min']) < settings.BATTERY_CELL_UVP_LEVEL_2
+            ocp = float(self.pack_variables['dc_current']) > settings.BATTERY_OCP
+            ovt_mosfet = float(self.pack_variables['mosfet_temp']) > settings.MOSFETS_OVERTEMPERATURE
+            ovt_cells = float(self.pack_variables['pack_temp']) > settings.CELLS_OVERTEMPERATURE
+            
+            log_battery.info('Verified level 2 safety conditions on com %s. Max Cell is: %s, Min Cell is: %s.', 
+                             self.com_port, 
+                             self.pack_variables['cv_max'],
+                             self.pack_variables['cv_min'])
             if c_ovp:
                 log_battery.info('Cell over-voltage, level 2. Port: %s', self.com_port)
                 self.pack_variables['cell_overvoltage_level_2'] = True
@@ -705,6 +716,7 @@ class UsbIssBattery(object):
         """
         try:
             self.pack_variables['is_not_safe_level_1'] = False
+            log_battery.info('Cleared LEVEL 1 Safety flag')
             return True
         except Exception as err:
             log_battery.exception('Unable to clear error fral level 1 in batt on port %s. Reason is %s', self.com_port, err)
