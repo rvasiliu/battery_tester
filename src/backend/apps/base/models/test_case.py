@@ -24,7 +24,7 @@ class TestCase(models.Model):
     battery = models.ForeignKey(Battery, related_name='test_case', limit_choices_to={'state': 'FREE'})
     inverter = models.ForeignKey(Inverter, related_name='test_case', limit_choices_to={'state': 'FREE'})
     result = models.CharField(max_length=32, blank=True, null=True)
-    description = models.CharField(max_length=32, blank=True, null=True)
+    description = models.CharField(max_length=256, blank=True, null=True)
     config = models.CharField(max_length=32, blank=True, null=True)
     state = models.CharField(max_length=32, choices=TEST_CASE_STATES, default='PENDING')
 
@@ -47,7 +47,7 @@ class TestCase(models.Model):
         
         for i in range(0,len(df_recipe)):
             log_test_case.info('Proceeding to step %s in test case with ID: %s.', i, self.id)
-            if (self.state == 'FINISHED' or self.state == 'FAILED'):
+            if (self.state == 'RUNNING' or self.state == 'PENDING'):
                 try:
                     if df_recipe.step_type[i] == 'CC Charge':
                         log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)

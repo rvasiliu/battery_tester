@@ -314,7 +314,7 @@ class VictronMultiplusMK2VCP(object):
             self.inverter_variables['dc_voltage'] = int.from_bytes(message[7:9], byteorder='little') / 100
             charging_current = int.from_bytes(message[9:12], byteorder='little')
             discharging_current = int.from_bytes(message[12:15], byteorder='little')
-            self.inverter_variables['dc_current'] = (charging_current + discharging_current) / 10
+            self.inverter_variables['dc_current'] = (charging_current - discharging_current) / 10
 
             return True
         except Exception as err:
@@ -698,6 +698,7 @@ class UsbIssBattery(object):
                 self.pack_variables['is_not_safe_level_2'] = True
                 return False
             else:
+                log_battery.info('No level 2 protection triggered on port: %s', self.com_port)
                 return True
         except Exception as err:
             log_battery.exception('Error in checking safety level 2 on port %s. Exception is: %s', self.com_port, err)

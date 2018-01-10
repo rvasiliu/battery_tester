@@ -116,6 +116,9 @@ def safety_check(self, battery_id,
     if not battery.battery_utilities.check_safety_level_2():
         # stop rig here
         log_main.info('Safety LEVEL 2 triggered in safety_check task. Test is: %s',test_case_id )
+        inverter.inverter_utilities.stop()
+        
+        
         # stop the periodic tasks: bat and inv
         periodic_tasks = PeriodicTask.objects.filter(id__in=[inv_periodic_task_id, 
                                                              bat_periodic_task_id,
@@ -143,7 +146,7 @@ def safety_check(self, battery_id,
             log_main.exception('Unable to delete the safety check task from the schedule.')
 
     #Check if test marked as FINISHED. 
-    if test_case.state == 'FINISHED':
+    elif test_case.state == 'FINISHED':
         log_main.info('FINISHED condition detected in safety check. Shutting down.')
         try:
             periodic_tasks.delete()
@@ -323,26 +326,17 @@ def main_task(self, test_case_id):
         log_main.exception('Error during running test %s', err)
     log_main.info('Test_case.run_test() completed')
     
-
-
-    ### test the scheduler with the while loop below:
-#     while True:
-#         test_case = TestCase.objects.get(id=test_case_id)
-#         log_main.info('main_task logic %s', test_case.state)
-#         if test_case.state == 'FINISHED':
-#             break
-# 
-#         time.sleep(20)
-
-    test_case.state = 'FINISHED'
     # stop inverter operation
     #victron_inv.stop()
-    
+
     # stop all periodic tasks when the main finishes
     safety_check_periodic_task.delete()   
     inv_periodic_task.delete()
     bat_periodic_task.delete()
     populate_results_periodic_task.delete()
+
+    test_case.state = 'FINISHED'
+    test_case.save()
 
     log_main.info('Main Task finished naturally. All tasks have been deleted.')
 
