@@ -9,4 +9,4 @@ node_modules/
 pidfiles/
 backend/assets/
 local.py
-.pid
+*.pid
