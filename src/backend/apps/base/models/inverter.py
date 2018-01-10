@@ -22,6 +22,8 @@ class Inverter(models.Model):
     dc_voltage = models.CharField(max_length=10, blank=True, null=True)
     ac_current = models.CharField(max_length=10, blank=True, null=True)
     ac_voltage = models.CharField(max_length=10, blank=True, null=True)
+    dc_capacity = models.CharField(max_length=10, blank=True, null=True)
+    dc_energy = models.CharField(max_length=10, blank=True, null=True)
 
     setpoint = models.CharField(max_length=10, blank=True, null=True)
     is_on = models.BooleanField(default=False)

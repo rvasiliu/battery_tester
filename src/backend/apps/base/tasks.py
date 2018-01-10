@@ -212,6 +212,8 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
         'dc_voltage',
         'ac_current',
         'ac_voltage',
+        'dc_capacity',
+        'dc_energy',
         'setpoint'
     ]
     inverter_field_values = [(field, getattr(inverter, field)) for field in inverter_fields if hasattr(inverter, field)]

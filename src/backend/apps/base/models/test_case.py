@@ -54,7 +54,8 @@ class TestCase(models.Model):
                         self.cc_charge(battery_instance=battery_instance, 
                                        inverter_instance=inverter_instance,
                                        start_timestamp=time.time(),
-                                       timeout_seconds = df_recipe.timeout_seconds[i])
+                                       timeout_seconds = df_recipe.timeout_seconds[i],
+                                       capacity_limit = df_recipe.capacity_limit[i])
                     
                     elif df_recipe.step_type[i] == 'CC Discharge':
                         log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
@@ -63,7 +64,6 @@ class TestCase(models.Model):
                                        start_timestamp=time.time(),
                                        timeout_seconds = df_recipe.timeout_seconds[i])
                         
-                    
                     elif df_recipe.step_type[i] == 'Rest':
                         log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
                         self.rest(battery_instance=battery_instance, 
@@ -79,7 +79,7 @@ class TestCase(models.Model):
                     
                     
 
-    def cc_charge(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds = 0):
+    def cc_charge(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds = 0, capacity_limit = 0):
         """
             Method encapsulates a cc_charge step
         """
@@ -92,7 +92,8 @@ class TestCase(models.Model):
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('Reached level 1 limits during charging on battery on port: %s.', battery_instance.com_port)
                 break
-            
+            elif inverter_instance.inverter_variables['dc_capacity'] > capacity_limit:
+                log_test_case.info('Exceeded capacity limit in CC charge')
             time.sleep(2)
         
         inverter_instance.rest()
