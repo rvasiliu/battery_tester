@@ -112,7 +112,10 @@ def safety_check(self, battery_id,
 
     # add code to check the battery parameter(or just call a method of the battery object
     battery.battery_utilities.check_safety_level_1()
-    
+    # get periodic tasks that have to be deleted
+    periodic_tasks = PeriodicTask.objects.filter(id__in=[inv_periodic_task_id,
+                                                         bat_periodic_task_id,
+                                                         populate_results_periodic_task_id])
     if not battery.battery_utilities.check_safety_level_2():
         # stop rig here
         log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
@@ -121,9 +124,6 @@ def safety_check(self, battery_id,
 
         
         # stop the periodic tasks: bat and inv
-        periodic_tasks = PeriodicTask.objects.filter(id__in=[inv_periodic_task_id, 
-                                                             bat_periodic_task_id,
-                                                             populate_results_periodic_task_id])
         log_main.info('TEST CASE ID: %s - Following tasks will be stopped: %s', test_case.id, periodic_tasks)
         # killing all the periodic tasks
         periodic_tasks.delete()
