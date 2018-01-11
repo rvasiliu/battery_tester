@@ -248,7 +248,7 @@ DATABASES = {
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Europe/Brussels'
+TIME_ZONE = 'Europe/London'
 
 USE_I18N = True
 

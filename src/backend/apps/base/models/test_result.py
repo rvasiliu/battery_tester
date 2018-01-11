@@ -8,5 +8,8 @@ class TestResult(models.Model):
     value = models.FloatField(blank=True, null=True)
     timestamp = models.DateTimeField()
 
+    class Meta:
+        ordering = ['timestamp']
+
     def __str__(self):
         return 'Test result for {}'.format(self.test_case.name)
