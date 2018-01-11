@@ -20,6 +20,7 @@ from .log import log_test_case as log_main
 class MaxRetriesExceededException(Exception):
     pass
 
+
 def calculate_graph_link(tc_id, start, stop='now'):
     if stop == 'now':
         refresh = '&refresh=5s'
@@ -28,7 +29,7 @@ def calculate_graph_link(tc_id, start, stop='now'):
     url_params = 'var-test_case_id={tc_id}&from={start_timestamp}&to={stop_timestamp}{refresh}'.format(
         tc_id=tc_id,
         start_timestamp=int(start.strftime('%s')) * 1000,
-        stop_timestamp=stop if stop=='now' else int(stop.strftime('%s')) * 1000,
+        stop_timestamp=stop if stop == 'now' else int(stop.strftime('%s')) * 1000,
         refresh=refresh)
     return 'http://localhost:9000/dashboard/db/cells-voltage?{url_params}'.format(url_params)
 
@@ -185,8 +186,12 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     inverter = test_case.inverter
     timestamp = timezone.now()
 
-    if not test_case.graph:
-        test_case.graph = calculate_graph_link(test_case.id, test_case.created)
+    if test_case.graph == '#':
+        try:
+            graph = calculate_graph_link(test_case.id, test_case.created)
+        except Exception as err:
+            log_main.exception('Failed to create graph, %s',err)
+        test_case.graph = graph or '#'
         test_case.save()
     # battery fields to save
     battery_fields = [
