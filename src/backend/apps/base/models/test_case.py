@@ -27,6 +27,8 @@ class TestCase(models.Model):
     description = models.CharField(max_length=256, blank=True, null=True)
     config = models.CharField(max_length=32, blank=True, null=True)
     state = models.CharField(max_length=32, choices=TEST_CASE_STATES, default='PENDING')
+    graph = models.CharField(max_length=128, null=True, blank=True)
+    date = models.DateTimeField()
 
     def __str__(self):
         return '{}'.format(self.name)

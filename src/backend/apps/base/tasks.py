@@ -1,6 +1,5 @@
 import time
 import json
-import datetime
 import pandas as pd
 
 from celery import shared_task
@@ -8,6 +7,7 @@ from celery import current_app
 
 from django.conf import settings
 
+from django.utils import timezone
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
 # log_main should be used in the main task
@@ -170,7 +170,7 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     test_case = TestCase.objects.get(id=test_case_id)
     battery = test_case.battery
     inverter = test_case.inverter
-    timestamp = datetime.datetime.now()
+    timestamp = timezone.now()
 
     # battery fields to save
     battery_fields = [
