@@ -115,23 +115,24 @@ def safety_check(self, battery_id,
     
     if not battery.battery_utilities.check_safety_level_2():
         # stop rig here
-        log_main.info('Safety LEVEL 2 triggered in safety_check task. Test is: %s',test_case_id )
+        log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
         inverter.inverter_utilities.stop()
-        
+        log_main.info('TEST CASE ID: %s - Stopped Inverter.', test_case.id)
+
         
         # stop the periodic tasks: bat and inv
         periodic_tasks = PeriodicTask.objects.filter(id__in=[inv_periodic_task_id, 
                                                              bat_periodic_task_id,
                                                              populate_results_periodic_task_id])
-        log_main.info('Following tasks will be stopped: %s', periodic_tasks)
+        log_main.info('TEST CASE ID: %s - Following tasks will be stopped: %s', test_case.id, periodic_tasks)
         # killing all the periodic tasks
         periodic_tasks.delete()
-        log_main.info('Stopped periodic tasks')
+        log_main.info('TEST CASE ID: %s - Stopped periodic tasks.', test_case.id)
         
-        log_main.info('setting statuses and result for test_case')
+        log_main.info('TEST CASE ID: %s - Setting statuses and result for test_case.', test_case_id)
         # setting test_case
         test_case.state = 'FINISHED'
-        test_case.result = 'ERROR'
+        test_case.result = 'FAILED'
         test_case.description = 'The test failed in safety check LEVEL 2.'
         test_case.save()
 
@@ -143,17 +144,17 @@ def safety_check(self, battery_id,
             safety_check_task = PeriodicTask.objects.get(name=name)
             safety_check_task.delete()
         except Exception as err:
-            log_main.exception('Unable to delete the safety check task from the schedule.')
+            log_main.exception('TEST CASE ID: %s - Unable to delete the safety check task from the schedule. Error is: %s', test_case.id, err)
 
     #Check if test marked as FINISHED. 
     elif test_case.state == 'FINISHED':
-        log_main.info('FINISHED condition detected in safety check. Shutting down.')
+        log_main.info('TEST CASE ID: %s - FINISHED condition has been detected in safety check. Shutting down.', test_case.id)
         try:
             periodic_tasks.delete()
             safety_check_task = PeriodicTask.objects.get(name=name)
             safety_check_task.delete()
         except Exception as err:
-            log_main.exception('Unable to shut down the test: %s', err)
+            log_main.exception('TEST CASE ID: %s - Unable to shut down the test: %s', test_case.id, err)
 
 @shared_task(bind=True)
 def populate_result(self, battery_id, inverter_id, test_case_id):
@@ -229,7 +230,7 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
 
 @shared_task(bind=True)
 def main_task(self, test_case_id):
-    time.sleep(1)
+    time.sleep(5)
     from .models import TestCase
 
     test_case = TestCase.objects.get(id=test_case_id)
@@ -321,12 +322,12 @@ def main_task(self, test_case_id):
     ]
     
     ### Main Logic - use test_case model 
-    log_main.info('Attempting to run test_case.run_test() now...')
+    log_main.info('Attempting to run test_case.run_test() for test ID: %s', test_case.id)
     try:
         test_case.run_test()
     except Exception as err:
-        log_main.exception('Error during running test %s', err)
-    log_main.info('Test_case.run_test() completed')
+        log_main.exception('Error during running test ID %s. Error is: %s', test_case.id, err)
+    log_main.info('Test_case.run_test() completed for test ID: %s', test_case.id)
     
     # stop inverter operation
     #victron_inv.stop()
@@ -340,5 +341,5 @@ def main_task(self, test_case_id):
     test_case.state = 'FINISHED'
     test_case.save()
 
-    log_main.info('Main Task finished naturally. All tasks have been deleted.')
+    log_main.info('TEST CASE ID: %s - Main Task finished naturally. All tasks have been deleted.', test_case.id)
 

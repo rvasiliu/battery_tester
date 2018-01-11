@@ -731,6 +731,6 @@ class UsbIssBattery(object):
             log_battery.info('Cleared LEVEL 1 Safety flag')
             return True
         except Exception as err:
-            log_battery.exception('Unable to clear error fral level 1 in batt on port %s. Reason is %s', self.com_port, err)
+            log_battery.exception('Unable to clear error flag level 1 in batt on port %s. Reason is %s', self.com_port, err)
             return False
     

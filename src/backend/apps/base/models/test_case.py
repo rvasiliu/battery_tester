@@ -46,11 +46,11 @@ class TestCase(models.Model):
        
         
         for i in range(0,len(df_recipe)):
-            log_test_case.info('Proceeding to step %s in test case with ID: %s.', i, self.id)
-            if (self.state == 'RUNNING' or self.state == 'PENDING'):
+            log_test_case.info('TEST CASE ID: %s - Proceeding to step %s from the test RECIPE.',self.id, i)
+            if True:
                 try:
                     if df_recipe.step_type[i] == 'CC Charge':
-                        log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
+                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s.', self.id, df_recipe.step_type[i])
                         self.cc_charge(battery_instance=battery_instance, 
                                        inverter_instance=inverter_instance,
                                        start_timestamp=time.time(),
@@ -58,14 +58,14 @@ class TestCase(models.Model):
                                        capacity_limit = df_recipe.capacity_limit[i])
                     
                     elif df_recipe.step_type[i] == 'CC Discharge':
-                        log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
+                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s in test case with ID: %s',self.id, df_recipe.step_type[i])
                         self.cc_discharge(battery_instance=battery_instance, 
                                        inverter_instance=inverter_instance,
                                        start_timestamp=time.time(),
                                        timeout_seconds = df_recipe.timeout_seconds[i])
                         
                     elif df_recipe.step_type[i] == 'Rest':
-                        log_test_case.info('Attempting step type %s in test case with ID: %s', df_recipe.step_type[i], self.id)
+                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s in test case with ID: %s', self.id, df_recipe.step_type[i])
                         self.rest(battery_instance=battery_instance, 
                                        inverter_instance=inverter_instance,
                                        start_timestamp=time.time(),
@@ -73,9 +73,9 @@ class TestCase(models.Model):
                         
                     
                     else:
-                        log_test_case.info('Unrecognised Step Type in test case with ID: %s', self.id)
+                        log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type in test case with ID: %s', self.id)
                 except Exception as err:
-                    log_test_case.exception('Error while attempting to run test step %. Error is %s.', i, err)
+                    log_test_case.exception('TEST CASE ID: %s - Error while attempting to run test step %. Error is %s.', self.id, i, err)
                     
                     
 
@@ -87,18 +87,22 @@ class TestCase(models.Model):
         #1. Place inverter in charge mode.
         #2. Every 2 seconds check for battery data and timeout.
         inverter_instance.charge()
-        log_test_case.info('Issued charge mode to inverter on port %s.', inverter_instance.com_port)
+        log_test_case.info('TEST CASE ID: %s -Issued charge mode to inverter on port %s.', self.id, inverter_instance.com_port)
         while (time.time()-start_timestamp)<timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
-                log_test_case.info('Reached level 1 limits during charging on battery on port: %s.', battery_instance.com_port)
+                log_test_case.info('TEST CASE ID: %s - Reached level 1 limits during charging on battery on port: %s.', self.id, battery_instance.com_port)
                 break
             elif inverter_instance.inverter_variables['dc_capacity'] > capacity_limit:
-                log_test_case.info('Exceeded capacity limit in CC charge')
+                log_test_case.info('TEST CASE ID: %s - Exceeded capacity limit in CC charge', self.id)
+                break
+            elif self.state == 'FINISHED':
+                log_test_case.info('TEST CASE ID: %s - Encountered FINISHED command while doing CC Carge. Breaking.', self.id)
+                break
             time.sleep(2)
         
         inverter_instance.rest()
         battery_instance.clear_level_1_error_flag()
-        log_test_case.info('CC CHARGE mode on inverter on port %s finished.', inverter_instance.com_port)
+        log_test_case.info('TEST CASE ID: %s - CC CHARGE mode on inverter on port %s finished.', self.id, inverter_instance.com_port)
         return True
     
     def cc_discharge(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds = 0):
@@ -112,7 +116,9 @@ class TestCase(models.Model):
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('Reached level 1 limits during inverting on battery on port: %s.', battery_instance.com_port)
                 break
-            
+            elif self.state == 'FINISHED':
+                log_test_case.info('Encountered FINISHED command while doing CC Discharge. Breaking.')
+                break
             time.sleep(2)
         
         inverter_instance.rest()
@@ -130,9 +136,10 @@ class TestCase(models.Model):
         while (time.time()-start_timestamp)<timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('NO ACTION - Reached level 1 limits during resting battery on port: %s.', battery_instance.com_port)
-                #break
-                
-            
+                #break # don't break here. 
+            elif self.state == 'FINISHED':
+                log_test_case.info('Encountered FINISHED command while doing a Rest. Breaking.')
+                break          
             time.sleep(2)
         
         inverter_instance.rest()
