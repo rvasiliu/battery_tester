@@ -29,7 +29,8 @@ class TestCase(models.Model):
     config = models.CharField(max_length=32, blank=True, null=True)
     state = models.CharField(max_length=32, choices=TEST_CASE_STATES, default='PENDING')
     graph = models.CharField(max_length=128, null=True, blank=True)
-    date_created = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    finished = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return '{}'.format(self.name)

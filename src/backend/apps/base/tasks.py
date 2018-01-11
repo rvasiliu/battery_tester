@@ -1,6 +1,6 @@
 import time
 import json
-import pandas as pd
+import datetime
 
 from celery import shared_task
 from celery import current_app
@@ -20,6 +20,17 @@ from .log import log_test_case as log_main
 class MaxRetriesExceededException(Exception):
     pass
 
+def calculate_graph_link(tc_id, start, stop='now'):
+    if stop == 'now':
+        refresh = '&refresh=5s'
+    else:
+        refresh = ''
+    url_params = 'var-test_case_id={tc_id}&from={start_timestamp}&to={stop_timestamp}{refresh}'.format(
+        tc_id=tc_id,
+        start_timestamp=int(start.strftime('%s')) * 1000,
+        stop_timestamp=stop if stop=='now' else int(stop.strftime('%s')) * 1000,
+        refresh=refresh)
+    return 'http://localhost:9000/dashboard/db/cells-voltage?{url_params}'.format(url_params)
 
 @shared_task(bind=True)
 def inverter_frame_read(self, inverter_id):
@@ -132,13 +143,15 @@ def safety_check(self, battery_id,
         log_main.info('TEST CASE ID: %s - Setting statuses and result for test_case.', test_case_id)
         # setting test_case
         test_case.state = 'FINISHED'
+        test_case.finished = timezone.now() + datetime.timedelta(seconds=60)
+        test_case.graph = calculate_graph_link(test_case.id, test_case.created, test_case.finished)
         test_case.result = 'FAILED'
         test_case.description = 'The test failed in safety check LEVEL 2.'
         test_case.save()
 
-        #stop inverter, stop battery
-#         battery.battery_utilities.stop_and_release()
-#         inverter.inverter_utilities.stop_and_release()
+        # stop inverter, stop battery
+        # battery.battery_utilities.stop_and_release()
+        # inverter.inverter_utilities.stop_and_release()
         log_bat.info('Removing safety_check task from the scheduler')
         try:
             safety_check_task = PeriodicTask.objects.get(name=name)
@@ -172,6 +185,9 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     inverter = test_case.inverter
     timestamp = timezone.now()
 
+    if not test_case.graph:
+        test_case.graph = calculate_graph_link(test_case.id, test_case.created)
+        test_case.save()
     # battery fields to save
     battery_fields = [
         'dc_voltage',
@@ -339,6 +355,9 @@ def main_task(self, test_case_id):
     populate_results_periodic_task.delete()
 
     test_case.state = 'FINISHED'
+    test_case.finished = timezone.now() + datetime.timedelta(seconds=60)
+    test_case.graph = calculate_graph_link(test_case.id, test_case.created, test_case.finished)
+    test_case.result = 'Success'
     test_case.save()
 
     log_main.info('TEST CASE ID: %s - Main Task finished naturally. All tasks have been deleted.', test_case.id)
