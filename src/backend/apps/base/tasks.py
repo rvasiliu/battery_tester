@@ -246,7 +246,9 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
 
 @shared_task(bind=True)
 def main_task(self, test_case_id):
+    log_main.info('Waiting 25 Seconds...')
     time.sleep(5)
+    log_main.info('Done.')
     from .models import TestCase
 
     test_case = TestCase.objects.get(id=test_case_id)
