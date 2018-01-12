@@ -363,6 +363,14 @@ def main_task(self, test_case_id):
     }
     safety_check_periodic_task = create_periodic_task(**kwargs)
 
+    # check that all periodic tasks started correctly
+    if (not inv_periodic_task) or \
+            (not bat_periodic_task) or \
+            (not populate_results_periodic_task) or \
+            (not safety_check_periodic_task):
+        log_main.error('At least one of the periodic tasks didn\'t start')
+        return
+
     # save the headers in the result table
     inverter_header = [
         'name',
