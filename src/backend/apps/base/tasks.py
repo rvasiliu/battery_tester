@@ -369,6 +369,9 @@ def main_task(self, test_case_id):
             (not populate_results_periodic_task) or \
             (not safety_check_periodic_task):
         log_main.error('At least one of the periodic tasks didn\'t start')
+        test_case.state = 'FINISHED'
+        test_case.result = 'Failed due to periodic tasks'
+        test_case.save()
         return
 
     # save the headers in the result table
