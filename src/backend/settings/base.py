@@ -302,3 +302,8 @@ for i in range(10):
 for i in range(10):
     QUEUES['periodic_com_{}'.format(i)] = {}
 
+GRAFANA_BASE_URL = 'http://localhost:9000/dashboard/db/{}'
+CELLS_VOLTAGE_ROUTE = 'cells-voltage?{url_params}'
+CELLS_VOLTAGE_DASHBOARD = GRAFANA_BASE_URL.format(CELLS_VOLTAGE_ROUTE)
+
+

@@ -5,6 +5,7 @@ import datetime
 from celery import shared_task
 
 from django.utils import timezone
+from django.conf import settings
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
 # log_main should be used in the main task
@@ -30,7 +31,7 @@ def calculate_graph_link(tc_id, start, stop='now'):
         start_timestamp=int(start.timestamp() * 1000),
         stop_timestamp=stop if stop == 'now' else int(stop.timestamp() * 1000),
         refresh=refresh)
-    return 'http://localhost:9000/dashboard/db/cells-voltage?{url_params}'.format(url_params=url_params)
+    return settings.CELLS_VOLTAGE_DASHBOARD.format(url_params=url_params)
 
 
 def create_periodic_task(name, task, schedule, params, queue):
