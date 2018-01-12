@@ -19,16 +19,18 @@ class MaxRetriesExceededException(Exception):
 
 
 def calculate_graph_link(tc_id, start, stop='now'):
+    
+    log_main.info('Started %s, %s', start, stop)
     if stop == 'now':
         refresh = '&refresh=5s'
     else:
         refresh = ''
     url_params = 'var-test_case_id={tc_id}&from={start_timestamp}&to={stop_timestamp}{refresh}'.format(
         tc_id=tc_id,
-        start_timestamp=int(start.strftime('%s')) * 1000,
-        stop_timestamp=stop if stop == 'now' else int(stop.strftime('%s')) * 1000,
+        start_timestamp=int(start.timestamp() * 1000),
+        stop_timestamp=stop if stop == 'now' else int(stop.timestamp() * 1000),
         refresh=refresh)
-    return 'http://localhost:9000/dashboard/db/cells-voltage?{url_params}'.format(url_params)
+    return 'http://localhost:9000/dashboard/db/cells-voltage?{url_params}'.format(url_params=url_params)
 
 
 def create_periodic_task(name, task, schedule, params, queue):
@@ -207,10 +209,12 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     battery = test_case.battery
     inverter = test_case.inverter
     timestamp = timezone.now()
-
+    
+    log_main.info('Test Case Graph is %s:', test_case.graph)
     if test_case.graph == '#':
         try:
             graph = calculate_graph_link(test_case.id, test_case.created)
+            log_main.info('Calculating Graph Link')
         except Exception as err:
             log_main.exception('Failed to create graph, %s',err)
         test_case.graph = graph or '#'
