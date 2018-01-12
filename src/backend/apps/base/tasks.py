@@ -3,9 +3,6 @@ import json
 import datetime
 
 from celery import shared_task
-from celery import current_app
-
-from django.conf import settings
 
 from django.utils import timezone
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
@@ -33,18 +30,44 @@ def calculate_graph_link(tc_id, start, stop='now'):
         refresh=refresh)
     return 'http://localhost:9000/dashboard/db/cells-voltage?{url_params}'.format(url_params)
 
+
+def create_periodic_task(name, task, schedule, params, queue):
+    """
+    Method that creates a periodic task
+    :param name: periodic task name
+    :param task: task that should execute
+    :param schedule: schedule based on which the task will be executed (5 seconds interval)
+    :param params: parameters for the task. This should be a json encodable list
+    :param queue: RabbitMQ queue where the task will be executed
+    :return: periodic task object or None
+    """
+    try:
+        periodic_task = PeriodicTask.objects.create(
+            interval=schedule,  # we created this above.
+            name=name,  # simply describes this periodic task.
+            task='backend.apps.base.tasks.{}'.format(task),  # name of task.
+            args=json.dumps(params),
+            queue=queue
+        )
+        log_main.info('Periodic task `%s` scheduled.', name.upper())
+        return periodic_task
+    except Exception as err:
+        log_main.exception('Unable to create periodic task %s because %s', name, err)
+        return None
+
+
 @shared_task(bind=True)
 def inverter_frame_read(self, inverter_id):
     from .models import Inverter
     inverter = Inverter.objects.get(id=inverter_id)
     victron_inv = inverter.inverter_utilities
     result = victron_inv.get_info_frame_reply()
-    #log_main.info('Inverter frames read result is: %s', result)
+    # log_main.info('Inverter frames read result is: %s', result)
     if result:
         inverter_variables = victron_inv.inverter_variables
         for field, value in inverter_variables.items():
             if hasattr(inverter, field):
-                #log_main.info('Setting %s field on inverter to value: %s', field, value)
+                # log_main.info('Setting %s field on inverter to value: %s', field, value)
                 setattr(inverter, field, value)
         inverter.save()
     return
@@ -62,15 +85,15 @@ def send_inverter_setpoint(self, inverter_id):
     from .models import Inverter
     inverter = Inverter.objects.get(id=inverter_id)
     victron_inv = inverter.inverter_utilities
-    #victron_inv.set_point = set_point
+    # victron_inv.set_point = set_point
     victron_inv.send_setpoint()
     
     inverter_frame_read.apply_async((inverter_id,), queue='main_com_{}'.format(inverter.port))
     request = victron_inv.request_frames_update()
     log_inv.info('Request frame update has returned: %s', request)
-    #if request:
-        #inverter_frame_read.delay(inverter_id)
-    #   inverter_frame_read.apply_async((inverter_id,), queue='main_com_{}'.format(inverter.port))
+    # if request:
+    #     inverter_frame_read.delay(inverter_id)
+    #     inverter_frame_read.apply_async((inverter_id,), queue='main_com_{}'.format(inverter.port))
     return
 
 
@@ -94,10 +117,9 @@ def send_battery_keep_alive(self, battery_id, keep_alive):
                 setattr(battery, key, pack_values[key])
             else:
                 pass
-                #log_bat.warning('Battery does not have attr: %s', key)
+                # log_bat.warning('Battery does not have attr: %s', key)
         battery.save()
-        
-    
+
 
 @shared_task(bind=True)
 def safety_check(self, battery_id, 
@@ -134,7 +156,6 @@ def safety_check(self, battery_id,
         inverter.inverter_utilities.stop()
         log_main.info('TEST CASE ID: %s - Stopped Inverter.', test_case.id)
 
-        
         # stop the periodic tasks: bat and inv
         log_main.info('TEST CASE ID: %s - Following tasks will be stopped: %s', test_case.id, periodic_tasks)
         # killing all the periodic tasks
@@ -158,9 +179,10 @@ def safety_check(self, battery_id,
             safety_check_task = PeriodicTask.objects.get(name=name)
             safety_check_task.delete()
         except Exception as err:
-            log_main.exception('TEST CASE ID: %s - Unable to delete the safety check task from the schedule. Error is: %s', test_case.id, err)
+            msg = 'TEST CASE ID: {} - Unable to delete the safety check task from the schedule because {}'.format(test_case.id, err)
+            log_main.exception(msg)
 
-    #Check if test marked as FINISHED. 
+    # Check if test marked as FINISHED.
     elif test_case.state == 'FINISHED':
         log_main.info('TEST CASE ID: %s - FINISHED condition has been detected in safety check. Shutting down.', test_case.id)
         try:
@@ -220,14 +242,14 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
         'error_flag'
     ]
     bat_field_values = [(field, getattr(battery, field)) for field in battery_fields if hasattr(battery, field)]
-    #log_main.info('bat_field_values are: %s', bat_field_values)
+    # log_main.info('bat_field_values are: %s', bat_field_values)
     for field, value in bat_field_values:
         TestResult.objects.create(test_case=test_case,
                                   field='bat_{}'.format(field),
                                   value=value,
                                   timestamp=timestamp)
         
-    #log_main.info('Pack values saved to db.')
+    # log_main.info('Pack values saved to db.')
     # inverter fields to save
     inverter_fields = [
         'dc_current',
@@ -239,13 +261,13 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
         'setpoint'
     ]
     inverter_field_values = [(field, getattr(inverter, field)) for field in inverter_fields if hasattr(inverter, field)]
-    #log_main.info('inverter_field_values are: %s', inverter_field_values)
+    # log_main.info('inverter_field_values are: %s', inverter_field_values)
     for field, value in inverter_field_values:
         TestResult.objects.create(test_case=test_case,
                                   field='inv_{}'.format(field),
                                   value=value,
                                   timestamp=timestamp)
-    #log_main.info('Inverter values saved to db.')
+    # log_main.info('Inverter values saved to db.')
     return
 
 
@@ -259,11 +281,15 @@ def main_task(self, test_case_id):
     test_case = TestCase.objects.get(id=test_case_id)
     battery = test_case.battery
     inverter = test_case.inverter
-    
+
+    # set test case state to running
+    test_case.state = 'RUNNING'
+    test_case.save()
+
     # Inverter Setup
-    victron_inv = inverter.inverter_utilities #local instance of the inv utilities for the inverter in use
+    victron_inv = inverter.inverter_utilities   # local instance of the inv utilities for the inverter in use
     victron_inv.prepare_inverter()
-    #victron_inv.rest()
+    # victron_inv.rest()
 
     # Battery Setup
     battery_instance = battery.battery_utilities
@@ -281,57 +307,57 @@ def main_task(self, test_case_id):
     
     val = -200  # inverter.inverter_utilities.send_setpoint()
     log_main.info('send_setpoint returns %s', val)
-    # create the send_inverter_setpoint periodic task
-    inv_periodic_task = PeriodicTask.objects.create(
-        interval=s5_schedule,  # we created this above.
-        name='InverterPT_{}'.format(test_case.name),
-        task="backend.apps.base.tasks.send_inverter_setpoint",  # name of task.
-        args=json.dumps([inverter.id]),
-        queue='periodic_com_{}'.format(inverter.port)
-    )
-    log_main.info('periodic task send_inverter_setpoint scheduled')
 
-    val = 11    #battery.battery_utilities.update_values()
+    # create the send_inverter_setpoint periodic task ###############
+    kwargs = {
+        'name': 'InverterPT_{}'.format(test_case.name),
+        'task': 'send_inverter_setpoint',
+        'schedule': s5_schedule,
+        'params': [inverter.id],
+        'queue': 'periodic_{}'.format(inverter.port)
+    }
+    inv_periodic_task = create_periodic_task(**kwargs)
+
+    val = 11    # battery.battery_utilities.update_values()
     log_main.info('Update_values returns %s', val)
-    # create the send_inverter_setpoint periodic task
-    bat_periodic_task = PeriodicTask.objects.create( 
-        interval=s5_schedule,  # we created this above.
-        name='USBISSPT_{}'.format(test_case.name),
-        task='backend.apps.base.tasks.send_battery_keep_alive',  # name of task.
-        args=json.dumps([battery.id, val]),
-        queue='periodic_com_{}'.format(battery.port)
-    )
-    log_main.info('periodic task send_battery_keep_alive scheduled')
-    
-    task_name = 'Populate_results_{}'.format(test_case.name)
-    populate_results_periodic_task = PeriodicTask.objects.create(
-        interval=s10_schedule,  # we created this above.
-        name=task_name,  # simply describes this periodic task.
-        task='backend.apps.base.tasks.populate_result',  # name of task.
-        args=json.dumps([battery.id,
-                        inverter.id,
-                        test_case.id]),
-        queue='periodic_com_{}'.format(battery.port)
-    )
 
-    # create the safety_check periodic task
-    task_name = 'SafetyPT_{}'.format(test_case.name)
-    safety_check_periodic_task = PeriodicTask.objects.create(
-        interval=s5_schedule,  # we created this above.
-        name=task_name,  # simply describes this periodic task.
-        task='backend.apps.base.tasks.safety_check',  # name of task.
-        args=json.dumps([battery.id,
-                        inverter.id,
-                        test_case.id,
-                        inv_periodic_task.id,
-                        bat_periodic_task.id,
-                        populate_results_periodic_task.id,
-                        task_name]),
-        queue='periodic_com_{}'.format(battery.port)
-    )
-    log_main.info('Periodic task - safety routine - scheduled')
+    # create send_battery_keepalive periodic task ###############
+    kwargs = {
+        'name': 'USBISSPT_{}'.format(test_case.name),
+        'task': 'send_battery_keep_alive',
+        'schedule': s5_schedule,
+        'params': [battery.id, val],
+        'queue': 'periodic_{}'.format(battery.port)
+    }
+    bat_periodic_task = create_periodic_task(**kwargs)
 
-    
+    # create populate result periodic task ###############
+    kwargs = {
+        'name': 'Results_{}'.format(test_case.name),
+        'task': 'populate_result',
+        'schedule': s10_schedule,
+        'params': [battery.id, inverter.id, test_case.id],
+        'queue': 'periodic_{}'.format(battery.port)
+    }
+    populate_results_periodic_task = create_periodic_task(**kwargs)
+
+    # create the safety_check periodic task ###############
+    kwargs = {
+        'name': 'SafetyPT_{}'.format(test_case.name),
+        'task': 'safety_check',
+        'schedule': s5_schedule,
+        'params': [
+            battery.id,
+            inverter.id,
+            test_case.id,
+            inv_periodic_task.id,
+            bat_periodic_task.id,
+            populate_results_periodic_task.id,
+            'SafetyPT_{}'.format(test_case.name)],
+        'queue': 'periodic_{}'.format(battery.port)
+    }
+    safety_check_periodic_task = create_periodic_task(**kwargs)
+
     # save the headers in the result table
     inverter_header = [
         'name',
@@ -344,7 +370,7 @@ def main_task(self, test_case_id):
         '',
     ]
     
-    ### Main Logic - use test_case model 
+    # Main Logic - use test_case model
     log_main.info('Attempting to run test_case.run_test() for test ID: %s', test_case.id)
     try:
         test_case.run_test()
@@ -353,7 +379,7 @@ def main_task(self, test_case_id):
     log_main.info('Test_case.run_test() completed for test ID: %s', test_case.id)
     
     # stop inverter operation
-    #victron_inv.stop()
+    # victron_inv.stop()
 
     # stop all periodic tasks when the main finishes
     safety_check_periodic_task.delete()   
