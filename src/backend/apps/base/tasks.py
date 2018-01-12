@@ -386,7 +386,7 @@ def main_task(self, test_case_id):
     # victron_inv.stop()
 
     # stop all periodic tasks when the main finishes
-    safety_check_periodic_task.delete()   
+    safety_check_periodic_task.delete()
     inv_periodic_task.delete()
     bat_periodic_task.delete()
     populate_results_periodic_task.delete()
