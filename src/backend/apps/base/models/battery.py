@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from ..utils import UsbIssBattery, UsbIssBatteryFake
+from ..log import log_battery as log
 
 
 class Battery(models.Model):
@@ -64,6 +65,7 @@ class Battery(models.Model):
         # get the instance from the class attribute if it's already there
         if settings.DEBUG:
             # return the fake battery utility
+            log.warning('Debug is set to True. Using FAKE BATTERY utilities!')
             return self.get_battery_utilities(UsbIssBatteryFake)
         return self.get_battery_utilities(UsbIssBattery)
 

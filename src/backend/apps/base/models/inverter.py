@@ -60,6 +60,7 @@ class Inverter(models.Model):
         # get the instance from the class attribute if it's already there
         if settings.DEBUG:
             # return the fake utility
+            log.warning('Debug is set to True. Using FAKE INVERTER utilities!')
             return self.get_inverter_utilities(VictronMultiplusMK2VCPFake)
         return self.get_inverter_utilities(VictronMultiplusMK2VCP)
 
