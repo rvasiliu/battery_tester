@@ -1,11 +1,9 @@
-import ctypes
-import time
-
+from django.conf import settings
 from django.db import models
 
 from ..models import InverterPool
 from ..log import log_inverter as log
-from ..utils import VictronMultiplusMK2VCP
+from ..utils import VictronMultiplusMK2VCP, VictronMultiplusMK2VCPFake
 
 
 class Inverter(models.Model):
@@ -49,14 +47,20 @@ class Inverter(models.Model):
     def __str__(self):
         return '{}_{}'.format(self.name, self.port)
 
+    def get_inverter_utilities(self, inv_utility_class):
+        if self.port in inv_utility_class.inverter_instances:
+            return inv_utility_class.inverter_instances[self.port]
+        # if not, create it and store it on the class attribute
+        victron_instance = inv_utility_class(self.port)
+        inv_utility_class.inverter_instances[self.port] = victron_instance
+        return victron_instance
+
     @property
     def inverter_utilities(self):
         # get the instance from the class attribute if it's already there
-        if self.port in VictronMultiplusMK2VCP.inverter_instances:
-            return VictronMultiplusMK2VCP.inverter_instances[self.port]
-        # if not, create it and store it on the class attribute
-        victron_instance = VictronMultiplusMK2VCP(self.port)
-        VictronMultiplusMK2VCP.inverter_instances[self.port] = victron_instance
-        return victron_instance
+        if settings.DEBUG:
+            # return the fake utility
+            return self.get_inverter_utilities(VictronMultiplusMK2VCPFake)
+        return self.get_inverter_utilities(VictronMultiplusMK2VCP)
 
 

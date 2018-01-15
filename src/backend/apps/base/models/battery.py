@@ -1,5 +1,6 @@
 from django.db import models
-from ..utils import UsbIssBattery
+from django.conf import settings
+from ..utils import UsbIssBattery, UsbIssBatteryFake
 
 
 class Battery(models.Model):
@@ -50,20 +51,19 @@ class Battery(models.Model):
     def __str__(self):
         return '{}_{}'.format(self.name, self.port)
 
+    def get_battery_utilities(self, bat_utility_class):
+        if self.port in bat_utility_class.battery_instances:
+            return bat_utility_class.battery_instances[self.port]
+        # if not, create it and store it on the class attribute
+        usbiss_instance = bat_utility_class(self.port)
+        bat_utility_class.battery_instances[self.port] = usbiss_instance
+        return usbiss_instance
+
     @property
     def battery_utilities(self):
         # get the instance from the class attribute if it's already there
-        if self.port in UsbIssBattery.battery_instances:
-            return UsbIssBattery.battery_instances[self.port]
-        # if not, create it and store it on the class attribute
-        usbiss_instance = UsbIssBattery(self.port)
-        UsbIssBattery.battery_instances[self.port] = usbiss_instance
-        return usbiss_instance
-    
-#     def update_values(self):
-#         battery_instance = self.battery_utilities()
-#         
-#         self.cv_1 = battery_instance.pack_variables['cv_1']
-#         
-#         
-#         self.save()
+        if settings.DEBUG:
+            # return the fake battery utility
+            return self.get_battery_utilities(UsbIssBatteryFake)
+        return self.get_battery_utilities(UsbIssBattery)
+
