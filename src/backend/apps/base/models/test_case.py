@@ -40,17 +40,14 @@ class TestCase(models.Model):
             Load csv config file with the steps of the test.
         """
         return pd.read_csv(settings.LOOKUP_TABLE)
-        
 
     def run_test(self):
         df_recipe = self.load_config()
         battery_instance = self.battery.battery_utilities
         inverter_instance = self.inverter.inverter_utilities
-        
-       
-        
-        for i in range(0,len(df_recipe)):
-            log_test_case.info('TEST CASE ID: %s - Proceeding to step %s from the test RECIPE.',self.id, i)
+
+        for i in range(0, len(df_recipe)):
+            log_test_case.info('TEST CASE ID: %s - Proceeding to step %s from the test RECIPE.', self.id, i)
             if True:
                 try:
                     if df_recipe.step_type[i] == 'CC Charge':
@@ -64,26 +61,26 @@ class TestCase(models.Model):
                     elif df_recipe.step_type[i] == 'CC Discharge':
                         log_test_case.info('TEST CASE ID: %s - Attempting step type %s in test case with ID: %s',self.id, df_recipe.step_type[i])
                         self.cc_discharge(battery_instance=battery_instance, 
-                                       inverter_instance=inverter_instance,
-                                       start_timestamp=time.time(),
-                                       timeout_seconds = df_recipe.timeout_seconds[i])
+                                          inverter_instance=inverter_instance,
+                                          start_timestamp=time.time(),
+                                          timeout_seconds = df_recipe.timeout_seconds[i])
                         
                     elif df_recipe.step_type[i] == 'Rest':
-                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s in test case with ID: %s', self.id, df_recipe.step_type[i])
+                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s', self.id, df_recipe.step_type[i])
                         self.rest(battery_instance=battery_instance, 
-                                       inverter_instance=inverter_instance,
-                                       start_timestamp=time.time(),
-                                       timeout_seconds = df_recipe.timeout_seconds[i])
-                        
-                    
+                                  inverter_instance=inverter_instance,
+                                  start_timestamp=time.time(),
+                                  timeout_seconds = df_recipe.timeout_seconds[i])
                     else:
                         log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type in test case with ID: %s', self.id)
                 except Exception as err:
                     log_test_case.exception('TEST CASE ID: %s - Error while attempting to run test step %. Error is %s.', self.id, i, err)
-                    
-                    
 
-    def cc_charge(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds = 0, capacity_limit = 0):
+    def cc_charge(self, battery_instance=None,
+                  inverter_instance=None,
+                  start_timestamp=None,
+                  timeout_seconds=0,
+                  capacity_limit=0):
         """
             Method encapsulates a cc_charge step
         """
@@ -157,6 +154,6 @@ def start_test_task(sender, instance, **kwargs):
     created = kwargs.get('created', False)
     if created:
         # log.info('dispatching main task for test case id: %s', instance.id)
-        main_task_id = main_task.apply_async((instance.id,), queue='main_com_{}'.format(instance.battery.port))
+        main_task_id = main_task.apply_async((instance.id,), queue='main_{}'.format(instance.battery.port))
         log_test_case.info('main_task id: %s', main_task_id)
 

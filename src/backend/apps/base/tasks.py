@@ -195,6 +195,7 @@ def safety_check(self, battery_id,
         except Exception as err:
             log_main.exception('TEST CASE ID: %s - Unable to shut down the test: %s', test_case.id, err)
 
+
 @shared_task(bind=True)
 def populate_result(self, battery_id, inverter_id, test_case_id):
     """
