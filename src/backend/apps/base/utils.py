@@ -17,6 +17,7 @@ import json
 from random import randint, random, uniform
 from .log import log_battery, log_inverter
 
+FAKE_STEP = 0
 
 class VictronMultiplusMK2VCP(object):
     """
@@ -568,6 +569,8 @@ class VictronMultiplusMK2VCPFake(object):
         """
             Method can be called and it will automatically configure the inverter to charge with a set amount
         """
+        global FAKE_STEP
+        FAKE_STEP = 'charge'
         try:
             self.set_point = settings.CHARGING_SETPOINT
             # self.send_state(1)
@@ -581,6 +584,8 @@ class VictronMultiplusMK2VCPFake(object):
         """
             Method can be called and it will automatically configure the iverter to invert with a set amount
         """
+        global FAKE_STEP
+        FAKE_STEP = 'discharge'
         try:
             self.set_point = settings.INVERTING_SETPOINT
             # self.send_state(1)
@@ -593,6 +598,8 @@ class VictronMultiplusMK2VCPFake(object):
         """
             Method will zero out the setpoint. The inverter will be kept on.
         """
+        global FAKE_STEP
+        FAKE_STEP = 'rest'
         try:
             self.set_point = 0
             # self.send_state(1)
@@ -1076,6 +1083,19 @@ class UsbIssBatteryFake(object):
 
         self.com_port = com_port
         self.serial = None
+        # fake data used to populate pack variables
+        self.fake_charging_data = {}
+        for cell in range(9):
+            self.fake_charging_data['cv_{}'.format(cell + 1)] = []
+            for i in range(100):
+                self.fake_charging_data['cv_{}'.format(cell+1)].append(uniform(3, 4))
+            self.fake_charging_data['cv_{}'.format(cell+1)].sort()
+        self.fake_discharging_data = {}
+        for cell in range(9):
+            self.fake_discharging_data['cv_{}'.format(cell + 1)] = []
+            for i in range(100):
+                self.fake_discharging_data['cv_{}'.format(cell+1)].append(uniform(2.9, 3.7))
+            self.fake_discharging_data['cv_{}'.format(cell+1)].sort(reverse=True)
 
     def configure_USB_ISS(self):
         """
@@ -1130,7 +1150,7 @@ class UsbIssBatteryFake(object):
             self.get_cell_voltages()
             self.get_temperatures()
             log_battery.info('Pack values updated')
-            log_battery.info('Pack cell voltages: %s', json.dumps(self.pack_variables,indent=2))
+            log_battery.info('Pack cell voltages: %s', json.dumps(self.pack_variables, indent=2))
             self.last_status_update = time.time()
             return self.pack_variables
         except Exception as err:
@@ -1168,25 +1188,15 @@ class UsbIssBatteryFake(object):
             Function gets cell voltages out of self.status and populates cv1 -> cv9 as well as cv_max and cv_min
         """
         try:
-            C1 = uniform(3, 4)
-            C2 = uniform(3, 4)
-            C3 = uniform(3, 4)
-            C4 = uniform(3, 4)
-            C5 = uniform(3, 4)
-            C6 = uniform(3, 4)
-            C7 = uniform(3, 4)
-            C8 = uniform(3, 4)
-            C9 = uniform(3, 4)
-
-            self.pack_variables['cv_1'] = "{0:.3f}".format(C1)
-            self.pack_variables['cv_2'] = "{0:.3f}".format(C2)
-            self.pack_variables['cv_3'] = "{0:.3f}".format(C3)
-            self.pack_variables['cv_4'] = "{0:.3f}".format(C4)
-            self.pack_variables['cv_5'] = "{0:.3f}".format(C5)
-            self.pack_variables['cv_6'] = "{0:.3f}".format(C6)
-            self.pack_variables['cv_7'] = "{0:.3f}".format(C7)
-            self.pack_variables['cv_8'] = "{0:.3f}".format(C8)
-            self.pack_variables['cv_9'] = "{0:.3f}".format(C9)
+            if FAKE_STEP == 'charge':
+                for i in range(9):
+                    self.pack_variables['cv_{}'.format(i+1)] = "{0:.3f}".format(self.fake_charging_data['cv_{}'.format(i + 1)].pop(0))
+            elif FAKE_STEP == 'discharge':
+                for i in range(9):
+                    self.pack_variables['cv_{}'.format(i+1)] = "{0:.3f}".format(self.fake_discharging_data['cv_{}'.format(i + 1)].pop(0))
+            else:
+                for i in range(9):
+                    self.pack_variables['cv_{}'.format(i+1)] = "{0:.3f}".format(3.70000)
 
             self.pack_variables['cv_min'] = min(
                 [self.pack_variables['cv_1'], self.pack_variables['cv_2'], self.pack_variables['cv_3'],
@@ -1207,8 +1217,8 @@ class UsbIssBatteryFake(object):
             method extracts the temperature readouts from self.status and populates mosfet and pack temperature readings
         """
         try:
-            mosfet_temp = uniform(30, 100)
-            pack_temp = uniform(30, 100)
+            mosfet_temp = uniform(30, 80)
+            pack_temp = uniform(30, 80)
 
             self.pack_variables['mosfet_temp'] = "{0:.3f}".format(mosfet_temp)
             self.pack_variables['pack_temp'] = "{0:.3f}".format(pack_temp)
