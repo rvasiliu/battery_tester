@@ -63,7 +63,7 @@ class TestCase(models.Model):
                         )
                         self.cc_charge(battery_instance=battery_instance, 
                                        inverter_instance=inverter_instance,
-                                       start_timestamp=timezone.now().timestamp(),
+                                       start_timestamp=time.time(),
                                        timeout_seconds=df_recipe.timeout_seconds[i],
                                        capacity_limit=df_recipe.capacity_limit[i])
                     
@@ -79,7 +79,7 @@ class TestCase(models.Model):
                         )
                         self.cc_discharge(battery_instance=battery_instance, 
                                           inverter_instance=inverter_instance,
-                                          start_timestamp=timezone.now().timestamp(),
+                                          start_timestamp=time.time(),
                                           timeout_seconds=df_recipe.timeout_seconds[i])
                         
                     elif df_recipe.step_type[i] == 'Rest':
@@ -94,7 +94,7 @@ class TestCase(models.Model):
                         )
                         self.rest(battery_instance=battery_instance, 
                                   inverter_instance=inverter_instance,
-                                  start_timestamp=timezone.now().timestamp(),
+                                  start_timestamp=time.time(),
                                   timeout_seconds=df_recipe.timeout_seconds[i])
                     else:
                         log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type in test case with ID: %s', self.id)
@@ -114,7 +114,7 @@ class TestCase(models.Model):
         #2. Every 2 seconds check for battery data and timeout.
         inverter_instance.charge()
         log_test_case.info('TEST CASE ID: %s -Issued charge mode to inverter on port %s.', self.id, inverter_instance.com_port)
-        while (timezone.now().timestamp() - start_timestamp) < timeout_seconds:
+        while (time.time() - start_timestamp) < timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('TEST CASE ID: %s - Reached level 1 limits during charging on battery on port: %s.', self.id, battery_instance.com_port)
                 break
@@ -138,7 +138,7 @@ class TestCase(models.Model):
         inverter_instance.invert()
         log_test_case.info('Issued invert mode to inverter on port %s.', inverter_instance.com_port)
         
-        while (timezone.now().timestamp() - start_timestamp) < timeout_seconds:
+        while (time.time() - start_timestamp) < timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('Reached level 1 limits during inverting on battery on port: %s.', battery_instance.com_port)
                 break
@@ -159,7 +159,7 @@ class TestCase(models.Model):
         inverter_instance.rest()
         log_test_case.info('Issued rest mode to inverter on port %s.', inverter_instance.com_port)
         
-        while (time.now().timestamp() - start_timestamp) < timeout_seconds:
+        while (time.time() - start_timestamp) < timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('NO ACTION - Reached level 1 limits during resting battery on port: %s.', battery_instance.com_port)
             elif self.state == 'FINISHED':
