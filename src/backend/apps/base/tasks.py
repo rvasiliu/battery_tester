@@ -154,12 +154,6 @@ def safety_check(self, battery_id,
                                                          bat_periodic_task_id,
                                                          populate_results_periodic_task_id])
     if not battery.battery_utilities.check_safety_level_2():
-        TestCaseEvent.objects.create(
-            test_case=test_case,
-            name='STOP',
-            trigger='SAFETY_CHECK_L2',
-            message=''
-        )
         # stop rig here
         log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
         inverter.inverter_utilities.stop()
