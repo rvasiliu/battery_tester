@@ -7,14 +7,15 @@ Utils module. Contains object class for the VCP serial configuration (using pyth
 1. Victron Multiplus inverter with MK2b interface (tested for USB-RS232)
 2. USB-ISS connected OnSystems 1st life battery pack
 """
-from django.conf import settings
-
 import serial
 import time
 import struct
 import ctypes
 import json
 from random import randint, random, uniform
+
+from django.conf import settings
+
 from .log import log_battery, log_inverter
 
 FAKE_STEP = 0
@@ -33,6 +34,7 @@ class VictronMultiplusMK2VCP(object):
 
     def __init__(self, com_port):
         self.set_point = 0
+        self.set_point_timestamp = None
         self.last_values_update_timestamp = 0;
         self.inverter_variables = {
             'dc_current': 0,
@@ -414,6 +416,7 @@ class VictronMultiplusMK2VCPFake(object):
 
     def __init__(self, com_port):
         self.set_point = 0
+        self.set_point_timestamp = None
         self.last_values_update_timestamp = 0;
         self.inverter_variables = {
             'dc_current': 0,
@@ -602,6 +605,7 @@ class VictronMultiplusMK2VCPFake(object):
         FAKE_STEP = 'rest'
         try:
             self.set_point = 0
+            self.set_point_timestamp = time.time()
             # self.send_state(1)
             return True
         except Exception as err:

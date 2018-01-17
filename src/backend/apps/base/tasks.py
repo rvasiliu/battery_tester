@@ -91,7 +91,7 @@ def send_inverter_setpoint(self, inverter_id):
     # victron_inv.set_point = set_point
     victron_inv.send_setpoint()
     
-    inverter_frame_read.apply_async((inverter_id,), queue='main_com_{}'.format(inverter.port))
+    inverter_frame_read.apply_async((inverter_id,), queue='main_{}'.format(inverter.port))
     request = victron_inv.request_frames_update()
     log_inv.info('Request frame update has returned: %s', request)
     # if request:
@@ -141,7 +141,7 @@ def safety_check(self, battery_id,
     :param main_task_id:
     :return:
     """
-    from .models import Battery, Inverter, TestCase
+    from .models import Battery, Inverter, TestCase, TestCaseEvent
     battery = Battery.objects.get(id=battery_id)
     inverter = Inverter.objects.get(id=inverter_id)
     test_case = TestCase.objects.get(id=test_case_id)
@@ -154,6 +154,12 @@ def safety_check(self, battery_id,
                                                          bat_periodic_task_id,
                                                          populate_results_periodic_task_id])
     if not battery.battery_utilities.check_safety_level_2():
+        TestCaseEvent.objects.create(
+            test_case=test_case,
+            name='STOP',
+            trigger='SAFETY_CHECK_L2',
+            message=''
+        )
         # stop rig here
         log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
         inverter.inverter_utilities.stop()
