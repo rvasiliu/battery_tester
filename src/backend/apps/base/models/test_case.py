@@ -31,7 +31,7 @@ class TestCase(models.Model):
     graph = models.CharField(max_length=128, null=True, blank=True, default='#')
     created = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     finished = models.DateTimeField(null=True, blank=True)
-    recipe = models.CharField(max_length=64, default=settings.LOOKUP_TABLE)
+    recipe = models.CharField(max_length=128, default=settings.LOOKUP_TABLE)
 
     def __str__(self):
         return '{}'.format(self.name)
