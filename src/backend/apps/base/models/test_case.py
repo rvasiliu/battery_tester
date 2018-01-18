@@ -68,7 +68,7 @@ class TestCase(models.Model):
                                        capacity_limit=df_recipe.capacity_limit[i])
                     
                     elif df_recipe.step_type[i] == 'CC Discharge':
-                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s in test case with ID: %s', self.id, df_recipe.step_type[i])
+                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s', self.id, df_recipe.step_type[i])
                         tce = TestCaseEvent.objects.create(
                             test_case=self,
                             name='DISCHARGE',
@@ -97,9 +97,9 @@ class TestCase(models.Model):
                                   start_timestamp=time.time(),
                                   timeout_seconds=df_recipe.timeout_seconds[i])
                     else:
-                        log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type in test case with ID: %s', self.id)
+                        log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type %s', self.id, i)
                 except Exception as err:
-                    log_test_case.exception('TEST CASE ID: %s - Error while attempting to run test step %. Error is %s.', self.id, i, err)
+                    log_test_case.exception('TEST CASE ID: %s - Error on test step %s. Error is %s.', self.id, i, err)
 
     def cc_charge(self, battery_instance=None,
                   inverter_instance=None,
