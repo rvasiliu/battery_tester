@@ -70,7 +70,7 @@ def inverter_frame_read(self, inverter_id):
         inverter_variables = victron_inv.inverter_variables
         for field, value in inverter_variables.items():
             if hasattr(inverter, field):
-                log_main.info('Setting %s field on inverter to value: %s, len: %s', field, value, len(value))
+                log_main.info('Setting %s field on inverter to value: %s', field, value)
                 setattr(inverter, field, value)
         inverter.save()
     return
