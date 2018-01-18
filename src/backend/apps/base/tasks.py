@@ -70,7 +70,7 @@ def inverter_frame_read(self, inverter_id):
         inverter_variables = victron_inv.inverter_variables
         for field, value in inverter_variables.items():
             if hasattr(inverter, field):
-                # log_main.info('Setting %s field on inverter to value: %s', field, value)
+                log_main.info('Setting %s field on inverter to value: %s, len: %s', field, value, len(value))
                 setattr(inverter, field, value)
         inverter.save()
     return
@@ -216,9 +216,9 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     if test_case.graph == '#':
         try:
             graph = calculate_graph_link(test_case.id, test_case.created)
-            log_main.info('Calculating Graph Link')
+            log_main.info('Graph Link %s, len: %s', graph, len(graph))
         except Exception as err:
-            log_main.exception('Failed to create graph, %s',err)
+            log_main.exception('Failed to create graph, %s', err)
         test_case.graph = graph or '#'
         test_case.save()
     # battery fields to save
@@ -250,6 +250,9 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     bat_field_values = [(field, getattr(battery, field)) for field in battery_fields if hasattr(battery, field)]
     # log_main.info('bat_field_values are: %s', bat_field_values)
     for field, value in bat_field_values:
+        if isinstance(value, bool):
+            value = 0 if not value else 1
+        log_main.info('field %s, value: %s', field, value)
         TestResult.objects.create(test_case=test_case,
                                   field='bat_{}'.format(field),
                                   value=value,
