@@ -323,10 +323,12 @@ class VictronMultiplusMK2VCP(object):
             self.inverter_variables['dc_current'] = (discharging_current  - charging_current) / 10
             
             if self.last_values_update_timestamp == 0:
-                self.inverter_variables['dc_capacity'] = float(format(self.inverter_variables['dc_current'] * (time.time() - self.last_values_update_timestamp) / 3600, '.5f'))
+                #dc_capacity = format(abs(self.inverter_variables['dc_current']) * (time.time() - self.last_values_update_timestamp) / 3600, '.3f')
+                #log_inverter.info('Capacity before converting to Float is: %s', dc_capacity)
+                self.inverter_variables['dc_capacity'] = 0 # float(dc_capacity)
                 log_inverter.info('Fist capacity measurement taken: %s', self.inverter_variables['dc_capacity'])
             else:
-                self.inverter_variables['dc_capacity']  = float(format(self.inverter_variables['dc_capacity'] + (self.inverter_variables['dc_current'] * (time.time() - self.last_values_update_timestamp) / 3600), '.5f'))
+                self.inverter_variables['dc_capacity']  = float(format(self.inverter_variables['dc_capacity'] + (abs(self.inverter_variables['dc_current']) * (time.time() - self.last_values_update_timestamp) / 3600), '.3f'))
                 log_inverter.info('Pack capacity measurement taken: %s', self.inverter_variables['dc_capacity'])
 
             self.last_values_update_timestamp = time.time()

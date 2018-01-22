@@ -49,6 +49,7 @@ class TestCase(models.Model):
         from ..models import TestCaseEvent
         for i in range(0, len(df_recipe)):
             log_test_case.info('TEST CASE ID: %s - Proceeding to step %s from the test RECIPE.', self.id, i)
+            inverter_instance.inverter_variables['dc_capacity'] = 0
             if True:
                 try:
                     if df_recipe.step_type[i] == 'CC Charge':

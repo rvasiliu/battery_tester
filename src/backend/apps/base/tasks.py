@@ -70,7 +70,7 @@ def inverter_frame_read(self, inverter_id):
         inverter_variables = victron_inv.inverter_variables
         for field, value in inverter_variables.items():
             if hasattr(inverter, field):
-                log_main.info('Setting %s field on inverter to value: %s', field, value)
+                # Use in debug only #log_main.info('Setting %s field on inverter to value: %s', field, value)
                 setattr(inverter, field, value)
         inverter.save()
     return
@@ -92,11 +92,8 @@ def send_inverter_setpoint(self, inverter_id):
     victron_inv.send_setpoint()
     
     inverter_frame_read.apply_async((inverter_id,), queue='main_{}'.format(inverter.port))
-    request = victron_inv.request_frames_update()
-    log_inv.info('Request frame update has returned: %s', request)
-    # if request:
-    #     inverter_frame_read.delay(inverter_id)
-    #     inverter_frame_read.apply_async((inverter_id,), queue='main_com_{}'.format(inverter.port))
+    victron_inv.request_frames_update()
+    #log_inv.info('Request frame update has returned: %s', request)
     return
 
 
@@ -216,7 +213,7 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     if test_case.graph == '#':
         try:
             graph = calculate_graph_link(test_case.id, test_case.created)
-            log_main.info('Graph Link %s, len: %s', graph, len(graph))
+            #log_main.info('Graph Link %s, len: %s', graph, len(graph))
         except Exception as err:
             log_main.exception('Failed to create graph, %s', err)
         test_case.graph = graph or '#'
@@ -252,7 +249,7 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     for field, value in bat_field_values:
         if isinstance(value, bool):
             value = 0 if not value else 1
-        log_main.info('field %s, value: %s', field, value)
+        #log_main.info('field %s, value: %s', field, value)
         TestResult.objects.create(test_case=test_case,
                                   field='bat_{}'.format(field),
                                   value=value,
@@ -282,7 +279,7 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
 
 @shared_task(bind=True)
 def main_task(self, test_case_id):
-    log_main.info('Waiting 25 Seconds...')
+    log_main.info('Waiting 5 Seconds...startup-requirement...')
     time.sleep(5)
     log_main.info('Done.')
     from .models import TestCase
