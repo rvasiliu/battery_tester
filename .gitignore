@@ -9,4 +9,5 @@ node_modules/
 pidfiles/
 backend/assets/
 local.py
+test_recipe.csv
 *.pid
