@@ -13,7 +13,7 @@ class Inverter(models.Model):
         ('OFFLINE', 'OFFLINE')
     )
     name = models.CharField(max_length=32, blank=True, null=True)
-    port = models.CharField(max_length=10, blank=True, null=True)
+    port = models.CharField(max_length=32, blank=True, null=True)
     ve_bus_address = models.CharField(max_length=10, blank=True, null=True)
 
     dc_current = models.CharField(max_length=10, blank=True, null=True)

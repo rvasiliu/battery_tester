@@ -209,7 +209,7 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
     inverter = test_case.inverter
     timestamp = timezone.now()
     
-    log_main.info('Test Case Graph is %s:', test_case.graph)
+    #log_main.info('Test Case Graph is %s:', test_case.graph)
     if test_case.graph == '#':
         try:
             graph = calculate_graph_link(test_case.id, test_case.created)

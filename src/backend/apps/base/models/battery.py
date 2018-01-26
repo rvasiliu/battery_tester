@@ -12,7 +12,7 @@ class Battery(models.Model):
     )
     name = models.CharField(max_length=32, blank=True, null=True)
     serial_number = models.CharField(max_length=10, blank=True, null=True)
-    port = models.CharField(max_length=10, blank=True, null=True)
+    port = models.CharField(max_length=32, blank=True, null=True)
     i2c_address = models.CharField(max_length=10, blank=True, null=True)
 
     firmware_version = models.IntegerField(blank=True, null=True)
