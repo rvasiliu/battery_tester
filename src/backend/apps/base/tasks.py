@@ -307,6 +307,8 @@ def main_task(self, test_case_id):
     # they are like normal django objects with the same methods and query engine
 
     # create 5s period schedule. Use this for all the tasks that must run at every 5 seconds
+    s1_schedule, created = IntervalSchedule.objects.get_or_create(every=1, period=IntervalSchedule.SECONDS)
+    s2_schedule, created = IntervalSchedule.objects.get_or_create(every=2, period=IntervalSchedule.SECONDS)
     s5_schedule, created = IntervalSchedule.objects.get_or_create(every=5, period=IntervalSchedule.SECONDS)
     s10_schedule, created = IntervalSchedule.objects.get_or_create(every=10, period=IntervalSchedule.SECONDS)
     s60_schedule, created = IntervalSchedule.objects.get_or_create(every=60, period=IntervalSchedule.SECONDS)
@@ -320,12 +322,12 @@ def main_task(self, test_case_id):
         'task': 'send_inverter_setpoint',
         'schedule': s5_schedule,
         'params': [inverter.id],
-        'queue': 'periodic_{}'.format(inverter.port)
+        'queue': 'periodic_inverter_{}'.format(inverter.port)
     }
     inv_periodic_task = create_periodic_task(**kwargs)
 
     val = 11    # battery.battery_utilities.update_values()
-    log_main.info('Update_values returns %s', val)
+    # Do not need this log? log_main.info('Update_values returns %s', val)
 
     # create send_battery_keepalive periodic task ###############
     kwargs = {
@@ -333,7 +335,7 @@ def main_task(self, test_case_id):
         'task': 'send_battery_keep_alive',
         'schedule': s5_schedule,
         'params': [battery.id, val],
-        'queue': 'periodic_{}'.format(battery.port)
+        'queue': 'periodic_keepalive_{}'.format(battery.port)
     }
     bat_periodic_task = create_periodic_task(**kwargs)
 
@@ -343,7 +345,7 @@ def main_task(self, test_case_id):
         'task': 'populate_result',
         'schedule': s10_schedule,
         'params': [battery.id, inverter.id, test_case.id],
-        'queue': 'periodic_{}'.format(battery.port)
+        'queue': 'periodic_database_{}'.format(battery.port)
     }
     populate_results_periodic_task = create_periodic_task(**kwargs)
 
@@ -360,7 +362,7 @@ def main_task(self, test_case_id):
             bat_periodic_task.id,
             populate_results_periodic_task.id,
             'SafetyPT_{}'.format(test_case.name)],
-        'queue': 'periodic_{}'.format(battery.port)
+        'queue': 'periodic_safety_{}'.format(battery.port)
     }
     safety_check_periodic_task = create_periodic_task(**kwargs)
 
