@@ -58,6 +58,10 @@ https://stackoverflow.com/questions/14699873/how-to-reset-user-for-rabbitmq-mana
 
 ```celery -A backend worker --app=backend.celery:app -l info -c 5 --pool=eventlet -Q main_COM8,main_COM9,main_COM13,main_COM14,periodic_COM8,periodic_COM9,periodic_COM13,periodic_COM14```
 
+OR
+
+```celery -A backend worker --app=backend.celery:app -l info -c 5 --pool=eventlet -Q main_ttyUSB0,main_ttyACM0,periodic_inverter_ttyUSB0,periodic_keepalive_ttyUSB0,periodic_database_ttyUSB0,periodic_safety_ttyUSB0,periodic_inverter_ttyACM0,periodic_keepalive_ttyACM0,periodic_database_ttyACM0,periodic_safety_ttyACM0```
+
 * start the celery beat(scheduler) using the django-celery-beat with django database scheduler
 
 ```celery -A backend --app=backend.celery:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler```
