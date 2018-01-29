@@ -7,6 +7,7 @@ Utils module. Contains object class for the VCP serial configuration (using pyth
 1. Victron Multiplus inverter with MK2b interface (tested for USB-RS232)
 2. USB-ISS connected OnSystems 1st life battery pack
 """
+import os
 import serial
 import time
 import struct
@@ -49,7 +50,7 @@ class VictronMultiplusMK2VCP(object):
 
         try:
             self.serial_handle = serial.Serial()
-            self.serial_handle.port = self.com_port
+            self.serial_handle.port = '{sep}{path}{sep}{com}'.format(sep=os.path.sep, path='dev', com=self.com_port)
             self.serial_handle.baudrate = 2400
             self.serial_handle.timeout = 0.5
             self.serial_handle.setDTR(True)
@@ -750,7 +751,7 @@ class UsbIssBattery(object):
 
         try:
             self.serial_handle = serial.Serial()
-            self.serial_handle.port = self.com_port
+            self.serial_handle.port = '{sep}{path}{sep}{com}'.format(sep=os.path.sep, path='dev', com=self.com_port)
             self.serial_handle.baudrate = 19200
             self.serial_handle.timeout = 0.5
             self.serial_handle.parity = 'N'
