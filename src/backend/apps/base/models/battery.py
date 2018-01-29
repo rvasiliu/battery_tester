@@ -63,9 +63,9 @@ class Battery(models.Model):
     @property
     def battery_utilities(self):
         # get the instance from the class attribute if it's already there
-        if settings.DEBUG:
-            # return the fake battery utility
-            log.warning('Debug is set to True. Using FAKE BATTERY utilities!')
-            return self.get_battery_utilities(UsbIssBatteryFake)
+#         if settings.DEBUG:
+#             # return the fake battery utility
+#             log.warning('Debug is set to True. Using FAKE BATTERY utilities!')
+#             return self.get_battery_utilities(UsbIssBatteryFake)
         return self.get_battery_utilities(UsbIssBattery)
 
