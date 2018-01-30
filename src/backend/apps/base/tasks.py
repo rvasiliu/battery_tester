@@ -91,7 +91,7 @@ def send_inverter_setpoint(self, inverter_id):
     # victron_inv.set_point = set_point
     victron_inv.send_setpoint()
     
-    inverter_frame_read.apply_async((inverter_id,), queue='main_{}'.format(inverter.port))
+    inverter_frame_read.apply_async((inverter_id,), queue='periodic_inverter_{}'.format(inverter.port))
     victron_inv.request_frames_update()
     #log_inv.info('Request frame update has returned: %s', request)
     return
