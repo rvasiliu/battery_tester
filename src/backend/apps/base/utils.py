@@ -255,7 +255,7 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.set_point = settings.CHARGING_SETPOINT
-            #self.send_state(1)
+            log_inverter.info('Setting setpoint to CHARGE setting on port: %s', self.com_port)
             log_inverter.info('Charge mode set on inverter.')
             return True
         except Exception as err:
@@ -268,7 +268,7 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.set_point = settings.INVERTING_SETPOINT
-            #self.send_state(1)
+            log_inverter.info('Setting setpoint to DISHARGE setting on port: %s', self.com_port)
             return True
         except Exception as err:
             log_inverter.exception('Cannot set invert mode on port %s. Exception is: %s', self.com_port, err)
