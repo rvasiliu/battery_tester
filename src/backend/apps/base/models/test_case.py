@@ -116,6 +116,7 @@ class TestCase(models.Model):
         inverter_instance.charge()
         log_test_case.info('TEST CASE ID: %s -Issued charge mode to inverter on port %s.', self.id, inverter_instance.com_port)
         while (time.time() - start_timestamp) < timeout_seconds:
+            inverter_instance.set_point = -500
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('TEST CASE ID: %s - Reached level 1 limits during charging on battery on port: %s.', self.id, battery_instance.com_port)
                 break
@@ -140,6 +141,7 @@ class TestCase(models.Model):
         log_test_case.info('Issued invert mode to inverter on port %s.', inverter_instance.com_port)
         
         while (time.time() - start_timestamp) < timeout_seconds:
+            inverter_instance.set_point = 500
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('Reached level 1 limits during inverting on battery on port: %s.', battery_instance.com_port)
                 break
@@ -157,6 +159,7 @@ class TestCase(models.Model):
         """
             Method encapsulates a rest step
         """
+        inverter_intance.set_point = 0
         inverter_instance.rest()
         log_test_case.info('Issued rest mode to inverter on port %s.', inverter_instance.com_port)
         
