@@ -280,7 +280,8 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.set_point = 0
-            #self.send_state(1)
+            log_inverter.info('Setting setpoint to REST setting on port: %s, setpoint is: %s', self.com_port, self.set_point)
+
             return True
         except Exception as err:
             msg = 'Cannot set rest mode. The inverter on port {} is still running? Exception is: {}'.format(
