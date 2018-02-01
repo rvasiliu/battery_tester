@@ -91,7 +91,7 @@ def send_inverter_setpoint(self, inverter_id):
     # victron_inv.set_point = set_point
     victron_inv.send_setpoint()
     
-    inverter_frame_read.apply_async((inverter_id,), queue='periodic_inverter_{}'.format(inverter.port))
+    inverter_frame_read.apply_async((inverter_id,), queue='periodic')
     victron_inv.request_frames_update()
     #log_inv.info('Request frame update has returned: %s', request)
     return
@@ -153,6 +153,7 @@ def safety_check(self, battery_id,
     if not battery.battery_utilities.check_safety_level_2():
         # stop rig here
         log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
+        time.sleep(10)
         inverter.remove_inverter_utilities()
         battery.remove_battery_utilities()
         log_main.info('TEST CASE ID: %s - Stopped Inverter.', test_case.id)
@@ -191,6 +192,7 @@ def safety_check(self, battery_id,
             periodic_tasks.delete()
             safety_check_task = PeriodicTask.objects.get(name=name)
             safety_check_task.delete()
+            time.sleep(10)
             inverter.remove_inverter_utilities()
             battery.remove_battery_utilities()
         except Exception as err:
@@ -346,7 +348,7 @@ def main_task(self, test_case_id):
         'task': 'send_inverter_setpoint',
         'schedule': s5_schedule,
         'params': [inverter.id],
-        'queue': 'periodic_inverter_{}'.format(inverter.port)
+        'queue': 'periodic'
     }
     inv_periodic_task = create_periodic_task(**kwargs)
 
@@ -359,7 +361,7 @@ def main_task(self, test_case_id):
         'task': 'send_battery_keep_alive',
         'schedule': s5_schedule,
         'params': [battery.id, val],
-        'queue': 'periodic_keepalive_{}'.format(battery.port)
+        'queue': 'periodic'
     }
     bat_periodic_task = create_periodic_task(**kwargs)
 
@@ -369,7 +371,7 @@ def main_task(self, test_case_id):
         'task': 'populate_result',
         'schedule': s10_schedule,
         'params': [battery.id, inverter.id, test_case.id],
-        'queue': 'periodic_database_{}'.format(battery.port)
+        'queue': 'periodic'
     }
     populate_results_periodic_task = create_periodic_task(**kwargs)
 
@@ -386,7 +388,7 @@ def main_task(self, test_case_id):
             bat_periodic_task.id,
             populate_results_periodic_task.id,
             'SafetyPT_{}'.format(test_case.name)],
-        'queue': 'periodic_safety_{}'.format(battery.port)
+        'queue': 'periodic'
     }
     safety_check_periodic_task = create_periodic_task(**kwargs)
 
@@ -429,7 +431,7 @@ def main_task(self, test_case_id):
     inv_periodic_task.delete()
     bat_periodic_task.delete()
     populate_results_periodic_task.delete()
-
+    time.sleep(10)
     inverter.remove_inverter_utilities()
     battery.remove_battery_utilities()
 

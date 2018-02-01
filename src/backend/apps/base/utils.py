@@ -420,7 +420,7 @@ class VictronMultiplusMK2VCPFake(object):
     def __init__(self, com_port):
         self.set_point = 0
         self.set_point_timestamp = None
-        self.last_values_update_timestamp = 0;
+        self.last_values_update_timestamp = 0
         self.inverter_variables = {
             'dc_current': 0,
             'dc_voltage': 0,
@@ -660,20 +660,18 @@ class VictronMultiplusMK2VCPFake(object):
             Updates the self.dc_current and self.dc_voltage variables.
         """
         try:
-            self.inverter_variables['dc_voltage'] = uniform(20, 40)
+            self.inverter_variables['dc_voltage'] = float("{0:.3f}".format(uniform(27, 30)))
             if self.set_point:
                 current = uniform(5, 10)
             else:
                 current = uniform(10, 20) * (-1)
-            self.inverter_variables['dc_current'] = current
+            self.inverter_variables['dc_current'] = float("{0:.3f}".format(current))
 
             if self.last_values_update_timestamp == 0:
-                self.inverter_variables['dc_capacity'] = float(format(
-                    self.inverter_variables['dc_current'] * (time.time() - self.last_values_update_timestamp) / 3600,
-                    '.5f'))
+                self.inverter_variables['dc_capacity'] = 0
                 log_inverter.info('Fist capacity measurement taken: %s', self.inverter_variables['dc_capacity'])
             else:
-                self.inverter_variables['dc_capacity'] = float(format(self.inverter_variables['dc_capacity'] + (
+                self.inverter_variables['dc_capacity'] = float(format(self.inverter_variables['dc_capacity'] + abs(
                     self.inverter_variables['dc_current'] * (time.time() - self.last_values_update_timestamp) / 3600),
                                                                       '.5f'))
                 log_inverter.info('Pack capacity measurement taken: %s', self.inverter_variables['dc_capacity'])
@@ -689,8 +687,8 @@ class VictronMultiplusMK2VCPFake(object):
             Updates the self.ac_voltage and self.ac_current
         """
         try:
-            self.inverter_variables['ac_voltage'] = uniform(230, 240)
-            self.inverter_variables['ac_current'] = uniform(1, 5)
+            self.inverter_variables['ac_voltage'] = "{0:.3f}".format(uniform(230, 240))
+            self.inverter_variables['ac_current'] = "{0:.3f}".format(uniform(1, 5))
 
             return True
         except Exception as err:

@@ -54,57 +54,56 @@ class TestCase(models.Model):
         for i in range(0, len(df_recipe)):
             log_test_case.info('TEST CASE ID: %s - Proceeding to step %s from the test RECIPE.', self.id, i)
             inverter_instance.inverter_variables['dc_capacity'] = 0
-            if True:
-                try:
-                    if df_recipe.step_type[i] == 'CC Charge':
-                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s.', self.id, df_recipe.step_type[i])
-                        tce = TestCaseEvent.objects.create(
-                            test_case=self,
-                            name='CHARGE',
-                            trigger='RECIPE',
-                            message='set_point',
-                            value=settings.CHARGING_SETPOINT,
-                            timestamp=timezone.now(),
-                        )
-                        self.cc_charge(battery_instance=battery_instance, 
-                                       inverter_instance=inverter_instance,
-                                       start_timestamp=time.time(),
-                                       timeout_seconds=df_recipe.timeout_seconds[i],
-                                       capacity_limit=df_recipe.capacity_limit[i])
-                    
-                    elif df_recipe.step_type[i] == 'CC Discharge':
-                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s', self.id, df_recipe.step_type[i])
-                        tce = TestCaseEvent.objects.create(
-                            test_case=self,
-                            name='DISCHARGE',
-                            trigger='RECIPE',
-                            message='set_point',
-                            value=settings.INVERTING_SETPOINT,
-                            timestamp=timezone.now(),
-                        )
-                        self.cc_discharge(battery_instance=battery_instance, 
-                                          inverter_instance=inverter_instance,
-                                          start_timestamp=time.time(),
-                                          timeout_seconds=df_recipe.timeout_seconds[i])
-                        
-                    elif df_recipe.step_type[i] == 'Rest':
-                        log_test_case.info('TEST CASE ID: %s - Attempting step type %s', self.id, df_recipe.step_type[i])
-                        tce = TestCaseEvent.objects.create(
-                            test_case=self,
-                            name='REST',
-                            trigger='RECIPE',
-                            message='set_point',
-                            value=0,
-                            timestamp=timezone.now(),
-                        )
-                        self.rest(battery_instance=battery_instance, 
-                                  inverter_instance=inverter_instance,
-                                  start_timestamp=time.time(),
-                                  timeout_seconds=df_recipe.timeout_seconds[i])
-                    else:
-                        log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type %s', self.id, i)
-                except Exception as err:
-                    log_test_case.exception('TEST CASE ID: %s - Error on test step %s. Error is %s.', self.id, i, err)
+            try:
+                if df_recipe.step_type[i] == 'CC Charge':
+                    log_test_case.info('TEST CASE ID: %s - Attempting step type %s.', self.id, df_recipe.step_type[i])
+                    tce = TestCaseEvent.objects.create(
+                        test_case=self,
+                        name='CHARGE',
+                        trigger='RECIPE',
+                        message='set_point',
+                        value=settings.CHARGING_SETPOINT,
+                        timestamp=timezone.now(),
+                    )
+                    self.cc_charge(battery_instance=battery_instance,
+                                   inverter_instance=inverter_instance,
+                                   start_timestamp=time.time(),
+                                   timeout_seconds=df_recipe.timeout_seconds[i],
+                                   capacity_limit=df_recipe.capacity_limit[i])
+
+                elif df_recipe.step_type[i] == 'CC Discharge':
+                    log_test_case.info('TEST CASE ID: %s - Attempting step type %s', self.id, df_recipe.step_type[i])
+                    tce = TestCaseEvent.objects.create(
+                        test_case=self,
+                        name='DISCHARGE',
+                        trigger='RECIPE',
+                        message='set_point',
+                        value=settings.INVERTING_SETPOINT,
+                        timestamp=timezone.now(),
+                    )
+                    self.cc_discharge(battery_instance=battery_instance,
+                                      inverter_instance=inverter_instance,
+                                      start_timestamp=time.time(),
+                                      timeout_seconds=df_recipe.timeout_seconds[i])
+
+                elif df_recipe.step_type[i] == 'Rest':
+                    log_test_case.info('TEST CASE ID: %s - Attempting step type %s', self.id, df_recipe.step_type[i])
+                    tce = TestCaseEvent.objects.create(
+                        test_case=self,
+                        name='REST',
+                        trigger='RECIPE',
+                        message='set_point',
+                        value=0,
+                        timestamp=timezone.now(),
+                    )
+                    self.rest(battery_instance=battery_instance,
+                              inverter_instance=inverter_instance,
+                              start_timestamp=time.time(),
+                              timeout_seconds=df_recipe.timeout_seconds[i])
+                else:
+                    log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type %s', self.id, i)
+            except Exception as err:
+                log_test_case.exception('TEST CASE ID: %s - Error on test step %s. Error is %s.', self.id, i, err)
 
     def cc_charge(self, battery_instance=None,
                   inverter_instance=None,
