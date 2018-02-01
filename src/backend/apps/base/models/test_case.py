@@ -46,6 +46,10 @@ class TestCase(models.Model):
         df_recipe = self.load_config()
         battery_instance = self.battery.battery_utilities
         inverter_instance = self.inverter.inverter_utilities
+        
+        log_test_case.info('in run test: Battery instance ID is: %s', id(battery_instance))
+        log_test_case.info('in run test: Inverter instance ID is %s', id(inverter_instance))
+        
         from ..models import TestCaseEvent
         for i in range(0, len(df_recipe)):
             log_test_case.info('TEST CASE ID: %s - Proceeding to step %s from the test RECIPE.', self.id, i)
@@ -113,6 +117,7 @@ class TestCase(models.Model):
         #TODO
         #1. Place inverter in charge mode.
         #2. Every 2 seconds check for battery data and timeout.
+        log_test_case.info('In Charge step: inverter instance ID is %s:', id(inverter_instance))
         inverter_instance.charge()
         log_test_case.info('TEST CASE ID: %s -Issued charge mode to inverter on port %s.', self.id, inverter_instance.com_port)
         while (time.time() - start_timestamp) < timeout_seconds:
@@ -159,7 +164,7 @@ class TestCase(models.Model):
         """
             Method encapsulates a rest step
         """
-        inverter_intance.set_point = 0
+        inverter_instance.set_point = 0
         inverter_instance.rest()
         log_test_case.info('Issued rest mode to inverter on port %s.', inverter_instance.com_port)
         

@@ -1,7 +1,11 @@
 from django.db import models
 from django.conf import settings
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 from ..utils import UsbIssBattery, UsbIssBatteryFake
 from ..log import log_battery as log
+
+from ..tasks import battery_pretest
 
 
 class Battery(models.Model):
@@ -69,3 +73,11 @@ class Battery(models.Model):
 #             return self.get_battery_utilities(UsbIssBatteryFake)
         return self.get_battery_utilities(UsbIssBattery)
 
+@receiver(post_save, sender=Battery, dispatch_uid="start_battery_pretest_task")
+def start_battery_pretest_task(sender, instance, **kwargs):
+    #created = kwargs.get('created', False)
+    task_id = battery_pretest.apply_async((instance.id,), queue='main_{}'.format(instance.port))
+    log.info('Battery pretest task id: %s', task_id)
+    
+    
+    

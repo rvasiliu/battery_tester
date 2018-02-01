@@ -278,6 +278,27 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
 
 
 @shared_task(bind=True)
+def battery_pretest(self, battery_id):
+    log_bat.info('Running pre-test routine on battery')
+    battery = Battery.objects.get(id=battery_id)
+    battery_instance = battery.battery_utilities
+    
+    battery_instance.configure_USB_ISS()
+    battery_instance.turn_pack_on()
+    
+    for i in range (10):
+        battery_instance.update_values()
+        if battery_instance.last_status_update > battery_instance.start_timestamp:
+            log_bat.info('Got values successfully, values are: %s', battery_instance.pack_variables)
+        else:
+            log_bat.info('Battery did not respond. Trying 10 times. This is no: %s', i)
+            
+    
+    log_bat.info('Complete pre-test routine')
+    
+
+
+@shared_task(bind=True)
 def main_task(self, test_case_id):
     log_main.info('Waiting 5 Seconds...startup-requirement...')
     time.sleep(5)
