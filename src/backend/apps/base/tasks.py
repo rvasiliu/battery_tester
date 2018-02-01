@@ -153,8 +153,10 @@ def safety_check(self, battery_id,
     if not battery.battery_utilities.check_safety_level_2():
         # stop rig here
         log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
-        inverter.inverter_utilities.stop()
+        inverter.remove_inverter_utilities()
+        battery.remove_battery_utilities()
         log_main.info('TEST CASE ID: %s - Stopped Inverter.', test_case.id)
+        log_main.info('TEST CASE ID: %s - Stopped Battery.', test_case.id)
 
         # stop the periodic tasks: bat and inv
         log_main.info('TEST CASE ID: %s - Following tasks will be stopped: %s', test_case.id, periodic_tasks)
@@ -189,6 +191,8 @@ def safety_check(self, battery_id,
             periodic_tasks.delete()
             safety_check_task = PeriodicTask.objects.get(name=name)
             safety_check_task.delete()
+            inverter.remove_inverter_utilities()
+            battery.remove_battery_utilities()
         except Exception as err:
             log_main.exception('TEST CASE ID: %s - Unable to shut down the test: %s', test_case.id, err)
 
@@ -280,22 +284,21 @@ def populate_result(self, battery_id, inverter_id, test_case_id):
 @shared_task(bind=True)
 def battery_pretest(self, battery_id):
     log_bat.info('Running pre-test routine on battery')
+    from .models import Battery
     battery = Battery.objects.get(id=battery_id)
     battery_instance = battery.battery_utilities
     
     battery_instance.configure_USB_ISS()
     battery_instance.turn_pack_on()
     
-    for i in range (10):
+    for i in range(10):
         battery_instance.update_values()
         if battery_instance.last_status_update > battery_instance.start_timestamp:
             log_bat.info('Got values successfully, values are: %s', battery_instance.pack_variables)
         else:
             log_bat.info('Battery did not respond. Trying 10 times. This is no: %s', i)
-            
-    
+
     log_bat.info('Complete pre-test routine')
-    
 
 
 @shared_task(bind=True)
@@ -426,6 +429,9 @@ def main_task(self, test_case_id):
     inv_periodic_task.delete()
     bat_periodic_task.delete()
     populate_results_periodic_task.delete()
+
+    inverter.remove_inverter_utilities()
+    battery.remove_battery_utilities()
 
     test_case.state = 'FINISHED'
     test_case.finished = timezone.now() + datetime.timedelta(seconds=60)

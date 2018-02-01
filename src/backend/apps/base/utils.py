@@ -295,7 +295,7 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.set_point = 0
-            self.send_state(state = 0)
+            self.send_state(state=0)
             log_inverter.info('Issued a STOP command to inverter on port %s.', self.com_port)
             return True
         except Exception as err:
@@ -326,10 +326,10 @@ class VictronMultiplusMK2VCP(object):
             if self.last_values_update_timestamp == 0:
                 #dc_capacity = format(abs(self.inverter_variables['dc_current']) * (time.time() - self.last_values_update_timestamp) / 3600, '.3f')
                 #log_inverter.info('Capacity before converting to Float is: %s', dc_capacity)
-                self.inverter_variables['dc_capacity'] = 0 # float(dc_capacity)
+                self.inverter_variables['dc_capacity'] = 0  # float(dc_capacity)
                 log_inverter.info('Fist capacity measurement taken: %s', self.inverter_variables['dc_capacity'])
             else:
-                self.inverter_variables['dc_capacity']  = float(format(self.inverter_variables['dc_capacity'] + (abs(self.inverter_variables['dc_current']) * (time.time() - self.last_values_update_timestamp) / 3600), '.3f'))
+                self.inverter_variables['dc_capacity'] = float(format(self.inverter_variables['dc_capacity'] + (abs(self.inverter_variables['dc_current']) * (time.time() - self.last_values_update_timestamp) / 3600), '.3f'))
                 log_inverter.info('Pack capacity measurement taken: %s', self.inverter_variables['dc_capacity'])
 
             self.last_values_update_timestamp = time.time()
@@ -344,7 +344,7 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.inverter_variables['ac_voltage'] = int.from_bytes(message[7:9], byteorder='little') / 100
-            self.inverter_variables['ac_current'] = ctypes.c_int16(int.from_bytes(message[9:11], byteorder='little')).value /100
+            self.inverter_variables['ac_current'] = ctypes.c_int16(int.from_bytes(message[9:11], byteorder='little')).value / 100
 
             return True
         except Exception as err:
@@ -397,7 +397,7 @@ class VictronMultiplusMK2VCP(object):
                     log_inverter.warning('Ended through timeout. Messages received: %s', frame)
                     return frame
     
-                if flag == 2 or time.time() > start+timeout:
+                if flag == 2 or time.time() > start + timeout:
                     #log_inverter.info('Got both messages: %s', frame)
                     return frame
             except Exception as err:
@@ -431,13 +431,19 @@ class VictronMultiplusMK2VCPFake(object):
         }
 
         self.com_port = com_port
-
+        try:
+            file_path = os.path.join(settings.BASE_DIR, self.com_port)
+            self.serial_handle = open(file_path, 'a+')
+            log_inverter.info('Opened inverter file %s', file_path)
+        except Exception as err:
+            log_inverter.exception('Could not open port to inverter on %s. Error is: %s', self.com_port, err)
         log_inverter.info('Opened port to inverter on %s', self.com_port)
 
     def close_coms(self):
         """
             Closes the serial resource for the inverter
         """
+        self.serial_handle.close()
         log_inverter.info('Closed port to inverter on %s', self.com_port)
         return True
 
@@ -448,11 +454,13 @@ class VictronMultiplusMK2VCPFake(object):
             2. It will verify that the comport is open and if it is not it will attempt to open it.
         """
         try:
-            if True:
+            if self.serial_handle:
                 self.configure_ve_bus()
                 log_inverter.info('-PREPARE INVERTER- Configured VE bus for inverter on port: %s', self.com_port)
                 return True
             else:
+                file_path = os.path.join(settings.BASE_DIR, self.com_port)
+                self.serial_handle = open(file_path, 'r+')
                 self.configure_ve_bus()
                 log_inverter.info('Configured VE bus for inverter on port: %s', self.com_port)
                 return True
@@ -467,6 +475,7 @@ class VictronMultiplusMK2VCPFake(object):
         """
         try:
             time.sleep(0.4)
+            self.serial_handle.write('VE Bus configure for inverter on port {}'.format(self.com_port))
             log_inverter.info('VE Bus configure for inverter on port %s', self.com_port)
             return True
         except Exception as err:
@@ -479,6 +488,7 @@ class VictronMultiplusMK2VCPFake(object):
         """
         try:
             time.sleep(0.5)
+            self.serial_handle.write('Setpoint sent. Setpoint is: {}'.format(self.set_point))
             log_inverter.info('Setpoint sent. Setpoint is: %s', self.set_point)
             return True
         except Exception as err:
@@ -492,6 +502,7 @@ class VictronMultiplusMK2VCPFake(object):
         """
         try:
             time.sleep(0.2)
+            self.serial_handle.write('DC frame Requested (message sent) on port {}'.format(self.com_port))
             log_inverter.info('DC frame Requested (message sent) on port %s', self.com_port)
             return True
         except Exception as err:
@@ -505,6 +516,7 @@ class VictronMultiplusMK2VCPFake(object):
         """
         try:
             time.sleep(0.2)
+            self.serial_handle.write('AC frame Requested (message sent) on port: {}'.format(self.com_port))
             log_inverter.info('AC frame Requested (message sent) on port: %s', self.com_port)
             return True
         except Exception as err:
@@ -549,6 +561,7 @@ class VictronMultiplusMK2VCPFake(object):
         """
         try:
             command = self.make_state_message(state=state)
+            self.serial_handle.write('Switched to state {} the inverter on port {}.'.format(state, self.com_port))
             log_inverter.info('Switched to state %s the inverter on port %s. Used command: %s.', state, self.com_port,
                               str(command))
             return True
@@ -690,28 +703,30 @@ class VictronMultiplusMK2VCPFake(object):
             The function will automatically call an update of the self.ac/dc-voltage/current variables if a suitable reply is detected.
         """
         flag = 0
-        r = 15
         frame = {}
         start = time.time()
         timeout = 2
-        frame['DC'] = 'Got DC data'
-        self.update_DC_frame()
-        flag += 1
-        log_inverter.warning('REceived DC frame, flag is: %s', flag)
+        try:
+            byte = self.serial_handle.read(2)
+            frame['DC'] = 'Got DC data'
+            self.update_DC_frame()
+            flag += 1
+            log_inverter.warning('REceived DC frame, flag is: %s', flag)
+            # log_inverter.info('AC message: ', str(message))
+            frame['AC'] = 'Got AC data'
+            self.update_AC_frame()
+            flag += 1
+            log_inverter.warning('REceived AC frame, flag is: %s', flag)
+            if time.time() > start + timeout:
+                frame['timeout'] = True
+                log_inverter.warning('Ended through timeout. Messages received: %s', frame)
+                return frame
 
-        # log_inverter.info('AC message: ', str(message))
-        frame['AC'] = 'Got AC data'
-        self.update_AC_frame()
-        flag += 1
-        log_inverter.warning('REceived AC frame, flag is: %s', flag)
-
-        if time.time() > start + timeout:
-            frame['timeout'] = True
-            log_inverter.warning('Ended through timeout. Messages received: %s', frame)
-            return frame
-
-        if flag == 2 or time.time() > start + timeout:
-            # log_inverter.info('Got both messages: %s', frame)
+            if flag == 2 or time.time() > start + timeout:
+                # log_inverter.info('Got both messages: %s', frame)
+                return frame
+        except Exception as err:
+            log_inverter.exception(err)
             return frame
 
 
@@ -869,7 +884,7 @@ class UsbIssBattery(object):
             Method extract the serial number out of the status message. Populates self.serial_number
         """
         try:
-            self.pack_variables['serial_number'] = int.from_bytes(self.status_message[56:60], byteorder = 'little')
+            self.pack_variables['serial_number'] = int.from_bytes(self.status_message[56:60], byteorder='little')
             #log_battery.exception('Serial number of Battery on port %s is %s.', self.com_port, self.pack_variables['serial_number'])
             return True
         except Exception as err:
@@ -1089,7 +1104,13 @@ class UsbIssBatteryFake(object):
         self.start_timestamp = time.time()
 
         self.com_port = com_port
-        self.serial = None
+        try:
+            file_path = os.path.join(settings.BASE_DIR, self.com_port)
+            self.serial_handle = open(file_path, 'a+')
+            log_battery.info('Opened battery file for read/write: %s', file_path)
+        except Exception as err:
+            log_battery.exception('Cannot open comms to battery on port %s because of the following error: %s', self.com_port, err)
+
         # fake data used to populate pack variables
         self.fake_charging_data = {}
         for cell in range(9):
@@ -1110,6 +1131,7 @@ class UsbIssBatteryFake(object):
         """
         try:
             log_battery.info('Configure the ISS adapter for com: %s', self.com_port)
+            self.serial_handle.write('Configure the ISS adapter for com: {}'.format(self.com_port))
             return True
         except Exception as err:
             log_battery.exception('Error when configuring the USB ISS bridge on com %s. Error is: %s', self.com_port,
@@ -1124,16 +1146,18 @@ class UsbIssBatteryFake(object):
         """
         try:
             time.sleep(0.5)
+            self.serial_handle.write('Pack on port {} has been turned on.'.format(self.com_port))
             log_battery.info('Pack on port %s has been turned on.', self.com_port)
             return True
         except Exception as err:
-            log_battery.exception('Error when turning pack on port: %s. Pack serial number: %s', self.com_port)
+            log_battery.exception('Error when turning pack on port: %s.', self.com_port)
             return False
 
     def close_coms(self):
         """
             Closes resources for battery serial
         """
+        self.serial_handle.close()
         log_battery.info('Closed battery port %s.', self.com_port)
         return True
 
@@ -1141,6 +1165,13 @@ class UsbIssBatteryFake(object):
         """
             Method gets the status message from the battery pack. It populates self.status with the reply
         """
+        try:
+            self.serial_handle.write('get pack status')
+            time.sleep(0.2)
+            self.status_message = self.serial_handle.read(5)
+        except Exception as err:
+            log_battery.exception('failed to get pack status %s', self.com_port)
+            return False
         return True
 
     def update_values(self):
@@ -1330,8 +1361,7 @@ class UsbIssBatteryFake(object):
         """
             Method shuts down the mosfets and releases the serial port
         """
-        # self.turn_pack_off()
-        pass
+        self.close_coms()
 
     def clear_level_1_error_flag(self):
         """

@@ -67,17 +67,26 @@ class Battery(models.Model):
     @property
     def battery_utilities(self):
         # get the instance from the class attribute if it's already there
-#         if settings.DEBUG:
-#             # return the fake battery utility
-#             log.warning('Debug is set to True. Using FAKE BATTERY utilities!')
-#             return self.get_battery_utilities(UsbIssBatteryFake)
+        if settings.USE_FAKE_DEVICES:
+            # return the fake battery utility
+            log.warning('USE_FAKE_DEVICES is set to True. Using FAKE BATTERY utilities!')
+            return self.get_battery_utilities(UsbIssBatteryFake)
         return self.get_battery_utilities(UsbIssBattery)
 
-@receiver(post_save, sender=Battery, dispatch_uid="start_battery_pretest_task")
-def start_battery_pretest_task(sender, instance, **kwargs):
-    #created = kwargs.get('created', False)
-    task_id = battery_pretest.apply_async((instance.id,), queue='main_{}'.format(instance.port))
-    log.info('Battery pretest task id: %s', task_id)
-    
-    
-    
+    def remove_battery_utilities(self):
+        """
+        remove battery utility for port
+        :return:
+        """
+        if settings.USE_FAKE_DEVICES:
+            bat_instance = UsbIssBatteryFake.battery_instances.pop(self.port)
+        else:
+            bat_instance = UsbIssBattery.battery_instances.pop(self.port)
+        bat_instance.stop_and_release()
+        del bat_instance
+
+# @receiver(post_save, sender=Battery, dispatch_uid="start_battery_pretest_task")
+# def start_battery_pretest_task(sender, instance, **kwargs):
+#     #created = kwargs.get('created', False)
+#     task_id = battery_pretest.apply_async((instance.id,), queue='main_{}'.format(instance.port))
+#     log.info('Battery pretest task id: %s', task_id)

@@ -306,4 +306,6 @@ GRAFANA_BASE_URL = 'http://localhost:9000/dashboard/db/{}'
 CELLS_VOLTAGE_ROUTE = 'cells-voltage?{url_params}'
 CELLS_VOLTAGE_DASHBOARD = GRAFANA_BASE_URL.format(CELLS_VOLTAGE_ROUTE)
 
+USE_FAKE_DEVICES = False
+
 

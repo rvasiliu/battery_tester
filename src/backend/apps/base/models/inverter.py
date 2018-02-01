@@ -58,10 +58,20 @@ class Inverter(models.Model):
     @property
     def inverter_utilities(self):
         # get the instance from the class attribute if it's already there
-#         if settings.DEBUG:
-#             # return the fake utility
-#             log.warning('Debug is set to True. Using FAKE INVERTER utilities!')
-#             return self.get_inverter_utilities(VictronMultiplusMK2VCPFake)
+        if settings.USE_FAKE_DEVICES:
+            # return the fake utility
+            log.warning('USE_FAKE_DEVICES is set to True. Using FAKE INVERTER utilities!')
+            return self.get_inverter_utilities(VictronMultiplusMK2VCPFake)
         return self.get_inverter_utilities(VictronMultiplusMK2VCP)
 
-
+    def remove_inverter_utilities(self):
+        """
+        remove battery utility for port
+        :return:
+        """
+        if settings.USE_FAKE_DEVICES:
+            victron_instance = VictronMultiplusMK2VCPFake.inverter_instances.pop(self.port)
+        else:
+            victron_instance = VictronMultiplusMK2VCP.inverter_instances.pop(self.port)
+        victron_instance.stop_and_release()
+        del victron_instance
