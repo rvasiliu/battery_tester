@@ -131,7 +131,6 @@ class TestCase(models.Model):
                 break
             time.sleep(2)
 
-        inverter_instance.rest()
         battery_instance.clear_level_1_error_flag()
         log_test_case.info('TEST CASE ID: %s - CC CHARGE mode on inverter on port %s finished.', self.id, inverter_instance.com_port)
         return True
@@ -152,7 +151,6 @@ class TestCase(models.Model):
                 break
             time.sleep(2)
 
-        inverter_instance.rest()
         battery_instance.clear_level_1_error_flag()
         log_test_case.info('CC DISCHARGE mode on inverter on port %s finished.', inverter_instance.com_port)
         return True
