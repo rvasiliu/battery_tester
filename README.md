@@ -46,6 +46,8 @@ https://stackoverflow.com/questions/14699873/how-to-reset-user-for-rabbitmq-mana
 
 * allow the user admin rights ```rabbitmqctl set_permissions -p <vhost> <username> ".*" ".*" ".*"```
 
+* start rabbitmq(mac OS) ```/usr/local/Cellar/rabbitmq/3.7.0/sbin/rabbitmq-server start```
+
 ### Run
 
 #### Django app
@@ -55,20 +57,23 @@ https://stackoverflow.com/questions/14699873/how-to-reset-user-for-rabbitmq-mana
 #### Celery commands:
 
 * start workers
-
-```celery -A backend worker --app=backend.celery:app -l info -c 5 --pool=eventlet -Q main_COM8,main_COM9,main_COM13,main_COM14,periodic_COM8,periodic_COM9,periodic_COM13,periodic_COM14```
-
-OR
-
-```celery -A backend worker --app=backend.celery:app -l info -c 5 --pool=eventlet -Ofair -Q main_ttyUSB0,main_ttyACM0,main_ttyUSB1,main_ttyACM1,main_ttyUSB2,main_ttyACM2,main_ttyUSB3,main_ttyACM3,main_ttyUSB4,main_ttyACM4,main_ttyUSB5,main_ttyACM5,main_ttyUSB6,main_ttyACM6,main_ttyUSB7,main_ttyACM7,main_ttyUSB8,main_ttyACM8,main_ttyUSB9,main_ttyACM9,main_ttyUSB10,main_ttyACM10,periodic```
+Long running tasks must be distributed each on a thread(main tasks). The other tasks can be executed by another worker. For the rest of the tasks(periodic ones) must avoid greedy workers/threads. Therefore:
+  
+  * there must be one worker that deals with the main tasks(concurency=no of main tasks, use -Ofair to avoid prefetch). All main tasks can be submitted to one Q)
+  
+  ```celery -A backend worker --app=backend.celery:app -l info -c 10 -Ofair --pool=eventlet -Q main```
+  
+  * there must be one worker with autoscaling for the periodic tasks. Once again, -Ofair has to be used to avoid prefetching. Periodic tasks must be processed the moment they are scheduled.
+  
+  ```celery -A backend worker --app=backend.celery:app -l info -c 10 -Ofair --autoscaling 20 --pool=eventlet -Q periodic```
 
 * start the celery beat(scheduler) using the django-celery-beat with django database scheduler
 
-```celery -A backend --app=backend.celery:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler```
+  ```celery -A backend --app=backend.celery:app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler```
 
 * Remove tasks from queue
 
-```celery -A backend --app=backend.celery:app purge```
+  ```celery -A backend --app=backend.celery:app purge```
 
 #### Other Django commands:
 * db migration commands
