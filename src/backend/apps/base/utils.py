@@ -416,9 +416,9 @@ class VictronMultiplusMK2VCP(object):
         """
             Method should be called when inverter times out. Attempts to reestablish comms with the inverter
         """
-            log_inverter.info('Attempting to recover inverter from timeout... ... ...')
-            self.prepare_inverter()
-            return True
+        log_inverter.info('Attempting to recover inverter from timeout... ... ...')
+        self.prepare_inverter()
+        return True
             
             
 class VictronMultiplusMK2VCPFake(object):
