@@ -757,6 +757,8 @@ class UsbIssBattery(object):
                           'pack_overtemperature_cells': False,
                           'is_on': False
                           }
+        self.level_2_error_counter = 0 # use this to check persistance of error
+        
         self.last_status_update = time.time()
         self.start_timestamp = time.time()
 
@@ -946,8 +948,8 @@ class UsbIssBattery(object):
             method extracts the temperature readouts from self.status and populates mosfet and pack temperature readings
         """
         try:
-            mosfet_temp= struct.unpack('<f', self.status_message[6:10])
-            pack_temp = struct.unpack('<f', self.status_message[10:14])
+            pack_temp= struct.unpack('<f', self.status_message[6:10])
+            mosfet_temp = struct.unpack('<f', self.status_message[10:14])
 
             self.pack_variables['mosfet_temp'] = "{0:.3f}".format(mosfet_temp[0])
             self.pack_variables['pack_temp'] = "{0:.3f}".format(pack_temp[0])
@@ -1012,29 +1014,30 @@ class UsbIssBattery(object):
                              self.pack_variables['cv_max'],
                              self.pack_variables['cv_min'])
             if c_ovp:
+                self.level_2_error_counter += 1 
                 log_battery.info('Cell over-voltage, level 2. Port: %s', self.com_port)
                 self.pack_variables['cell_overvoltage_level_2'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             elif c_uvp:
                 log_battery.info('Cell under-voltage, level 2. Port: %s', self.com_port)
                 self.pack_variables['cell_undervoltage_level_2'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             elif ocp:
                 log_battery.info('Battery over-current. Port: %s', self.com_port)
                 self.pack_variables['pack_overcurrent'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             elif ovt_mosfet:
                 log_battery.info('Over-temperature (mosfets) on port: %s', self.com_port)
                 self.pack_variables['pack_overtemperature_mosfets'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             elif ovt_cells:
                 log_battery.info('Over-temperature (mosfets) on port: %s', self.com_port)
                 self.pack_variables['pack_overtemperature_cells'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             else:
                 log_battery.info('No level 2 protection triggered on port: %s', self.com_port)
@@ -1042,7 +1045,26 @@ class UsbIssBattery(object):
         except Exception as err:
             log_battery.exception('Error in checking safety level 2 on port %s. Exception is: %s', self.com_port, err)
             return False
-
+    
+    def set_level_2_safety_flag(self):
+        """
+            Method will set the level 2 safety flag
+        """
+        self.level_2_error_counter += 1 # increment error counter
+        if self.level_2_error_counter > 5: 
+            self.pack_variables['is_not_safe_level_2'] = True
+            log_battery('SAFETY FLAG 2 SET')
+        else:
+            log_battery('Safety 2 error found, no trigger. Counter is: %s', self.level_2_error_counter)
+        return True
+    
+    def clear_level_2_safety_flag(self):
+        """
+            Method will clear the level 2 safety flag 
+        """
+        #no needed so far
+        pass
+    
     def stop_and_release(self):
         """
             Method shuts down the mosfets and releases the serial port

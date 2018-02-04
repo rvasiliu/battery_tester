@@ -150,7 +150,12 @@ def safety_check(self, battery_id,
     periodic_tasks = PeriodicTask.objects.filter(id__in=[inv_periodic_task_id,
                                                          bat_periodic_task_id,
                                                          populate_results_periodic_task_id])
-    if not battery.battery_utilities.check_safety_level_2():
+    
+    if not battery.battery_utilities.check_safety_level_2(): # run safety check function
+        #log_bat.info('Detected a level 2 error, incremented counter to: %s', battery.battery_utilities.level_2_error_counter)
+        return True
+    
+    if battery.battery_utilities.pack_variables['is_not_safe_level_2']:
         # stop rig here
         log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
         time.sleep(10)
