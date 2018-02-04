@@ -123,7 +123,7 @@ class VictronMultiplusMK2VCP(object):
         try:
             message_out = self.make_message_MK2(self.set_point)
             self.serial_handle.write(message_out)
-            time.sleep(0.1)
+            time.sleep(0.3)
             log_inverter.info('Setpoint sent. Setpoint is: %s', self.set_point)
             return True
         except Exception as err:
@@ -240,9 +240,9 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.request_AC_frame()
-            time.sleep(0.1)
+            time.sleep(0.3)
             self.request_DC_frame()
-            time.sleep(0.1)
+            time.sleep(0.3)
             log_inverter.info('Requested DC and AC frames on inverter')
             return True
         except Exception as err:
