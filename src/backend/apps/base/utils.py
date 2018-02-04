@@ -63,6 +63,19 @@ class VictronMultiplusMK2VCP(object):
 
 
         self.inverter_timeout_counter = 0
+        
+    def open_comms(self):
+        """
+            Opens the serial port
+        """
+        try:
+            self.serial_handle.open()
+            log_inverter.info('Re-openned port to inverter on %s', self.com_port)
+            return True
+        except Exception as err:
+            log_inverter.exception('Could not open inverter port %s because %s', self.com_port, err)
+            return False
+        
             
     def close_coms(self):
         """
@@ -417,6 +430,8 @@ class VictronMultiplusMK2VCP(object):
             Method should be called when inverter times out. Attempts to reestablish comms with the inverter
         """
         log_inverter.info('Attempting to recover inverter from timeout... ... ...')
+        self.close_coms()
+        self.open_comms()
         self.prepare_inverter()
         return True
             
