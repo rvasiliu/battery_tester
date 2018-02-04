@@ -61,6 +61,9 @@ class VictronMultiplusMK2VCP(object):
         except Exception as err:
             log_inverter.exception('Could not open port to inverter on %s. Error is: %s', self.com_port, err)
 
+
+        self.inverter_timeout_counter = 0
+            
     def close_coms(self):
         """
             Closes the serial resource for the inverter
@@ -394,7 +397,11 @@ class VictronMultiplusMK2VCP(object):
                         pass
                 if time.time() > start + timeout:
                     frame['timeout'] = True
+                    self.inverter_timeout_counter += 1
                     log_inverter.warning('Ended through timeout. Messages received: %s', frame)
+                    if self.inverter_timeout_counter > 5:
+                        self.recover_inverter()
+                        self.inverter_timeout_counter = 0
                     return frame
     
                 if flag == 2 or time.time() > start + timeout:
@@ -405,6 +412,15 @@ class VictronMultiplusMK2VCP(object):
                 return frame
 
 
+    def recover_inverter(self):
+        """
+            Method should be called when inverter times out. Attempts to reestablish comms with the inverter
+        """
+            log_inverter.info('Attempting to recover inverter from timeout... ... ...')
+            self.prepare_inverter()
+            return True
+            
+            
 class VictronMultiplusMK2VCPFake(object):
     """
     Victron Multiplus inverter with MK2b interface (tested for USB-RS232)
@@ -1053,9 +1069,9 @@ class UsbIssBattery(object):
         self.level_2_error_counter += 1 # increment error counter
         if self.level_2_error_counter > 5: 
             self.pack_variables['is_not_safe_level_2'] = True
-            log_battery('SAFETY FLAG 2 SET')
+            log_battery.info('SAFETY FLAG 2 SET')
         else:
-            log_battery('Safety 2 error found, no trigger. Counter is: %s', self.level_2_error_counter)
+            log_battery.info('Safety 2 error found, no trigger. Counter is: %s', self.level_2_error_counter)
         return True
     
     def clear_level_2_safety_flag(self):
