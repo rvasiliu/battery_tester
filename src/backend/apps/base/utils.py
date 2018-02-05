@@ -61,6 +61,22 @@ class VictronMultiplusMK2VCP(object):
         except Exception as err:
             log_inverter.exception('Could not open port to inverter on %s. Error is: %s', self.com_port, err)
 
+
+        self.inverter_timeout_counter = 0
+        
+    def open_comms(self):
+        """
+            Opens the serial port
+        """
+        try:
+            self.serial_handle.open()
+            log_inverter.info('Re-openned port to inverter on %s', self.com_port)
+            return True
+        except Exception as err:
+            log_inverter.exception('Could not open inverter port %s because %s', self.com_port, err)
+            return False
+        
+            
     def close_coms(self):
         """
             Closes the serial resource for the inverter
@@ -123,7 +139,7 @@ class VictronMultiplusMK2VCP(object):
         try:
             message_out = self.make_message_MK2(self.set_point)
             self.serial_handle.write(message_out)
-            time.sleep(0.1)
+            time.sleep(0.3)
             log_inverter.info('Setpoint sent. Setpoint is: %s', self.set_point)
             return True
         except Exception as err:
@@ -240,9 +256,9 @@ class VictronMultiplusMK2VCP(object):
         """
         try:
             self.request_AC_frame()
-            time.sleep(0.1)
+            time.sleep(0.3)
             self.request_DC_frame()
-            time.sleep(0.1)
+            time.sleep(0.3)
             log_inverter.info('Requested DC and AC frames on inverter')
             return True
         except Exception as err:
@@ -394,7 +410,11 @@ class VictronMultiplusMK2VCP(object):
                         pass
                 if time.time() > start + timeout:
                     frame['timeout'] = True
+                    self.inverter_timeout_counter += 1
                     log_inverter.warning('Ended through timeout. Messages received: %s', frame)
+                    if self.inverter_timeout_counter > 5:
+                        self.recover_inverter()
+                        self.inverter_timeout_counter = 0
                     return frame
     
                 if flag == 2 or time.time() > start + timeout:
@@ -405,6 +425,17 @@ class VictronMultiplusMK2VCP(object):
                 return frame
 
 
+    def recover_inverter(self):
+        """
+            Method should be called when inverter times out. Attempts to reestablish comms with the inverter
+        """
+        log_inverter.info('Attempting to recover inverter from timeout... ... ...')
+        self.close_coms()
+        self.open_comms()
+        self.prepare_inverter()
+        return True
+            
+            
 class VictronMultiplusMK2VCPFake(object):
     """
     Victron Multiplus inverter with MK2b interface (tested for USB-RS232)
@@ -757,6 +788,8 @@ class UsbIssBattery(object):
                           'pack_overtemperature_cells': False,
                           'is_on': False
                           }
+        self.level_2_error_counter = 0 # use this to check persistance of error
+        
         self.last_status_update = time.time()
         self.start_timestamp = time.time()
 
@@ -946,8 +979,8 @@ class UsbIssBattery(object):
             method extracts the temperature readouts from self.status and populates mosfet and pack temperature readings
         """
         try:
-            mosfet_temp= struct.unpack('<f', self.status_message[6:10])
-            pack_temp = struct.unpack('<f', self.status_message[10:14])
+            pack_temp= struct.unpack('<f', self.status_message[6:10])
+            mosfet_temp = struct.unpack('<f', self.status_message[10:14])
 
             self.pack_variables['mosfet_temp'] = "{0:.3f}".format(mosfet_temp[0])
             self.pack_variables['pack_temp'] = "{0:.3f}".format(pack_temp[0])
@@ -1012,29 +1045,30 @@ class UsbIssBattery(object):
                              self.pack_variables['cv_max'],
                              self.pack_variables['cv_min'])
             if c_ovp:
+                self.level_2_error_counter += 1 
                 log_battery.info('Cell over-voltage, level 2. Port: %s', self.com_port)
                 self.pack_variables['cell_overvoltage_level_2'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             elif c_uvp:
                 log_battery.info('Cell under-voltage, level 2. Port: %s', self.com_port)
                 self.pack_variables['cell_undervoltage_level_2'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             elif ocp:
                 log_battery.info('Battery over-current. Port: %s', self.com_port)
                 self.pack_variables['pack_overcurrent'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             elif ovt_mosfet:
                 log_battery.info('Over-temperature (mosfets) on port: %s', self.com_port)
                 self.pack_variables['pack_overtemperature_mosfets'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             elif ovt_cells:
                 log_battery.info('Over-temperature (mosfets) on port: %s', self.com_port)
                 self.pack_variables['pack_overtemperature_cells'] = True
-                self.pack_variables['is_not_safe_level_2'] = True
+                self.set_level_2_safety_flag()
                 return False
             else:
                 log_battery.info('No level 2 protection triggered on port: %s', self.com_port)
@@ -1042,7 +1076,26 @@ class UsbIssBattery(object):
         except Exception as err:
             log_battery.exception('Error in checking safety level 2 on port %s. Exception is: %s', self.com_port, err)
             return False
-
+    
+    def set_level_2_safety_flag(self):
+        """
+            Method will set the level 2 safety flag
+        """
+        self.level_2_error_counter += 1 # increment error counter
+        if self.level_2_error_counter > 5: 
+            self.pack_variables['is_not_safe_level_2'] = True
+            log_battery.info('SAFETY FLAG 2 SET')
+        else:
+            log_battery.info('Safety 2 error found, no trigger. Counter is: %s', self.level_2_error_counter)
+        return True
+    
+    def clear_level_2_safety_flag(self):
+        """
+            Method will clear the level 2 safety flag 
+        """
+        #no needed so far
+        pass
+    
     def stop_and_release(self):
         """
             Method shuts down the mosfets and releases the serial port

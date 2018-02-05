@@ -120,7 +120,6 @@ class TestCase(models.Model):
         inverter_instance.charge()
         log_test_case.info('TEST CASE ID: %s -Issued charge mode to inverter on port %s.', self.id, inverter_instance.com_port)
         while (time.time() - start_timestamp) < timeout_seconds:
-            inverter_instance.charge()
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('TEST CASE ID: %s - Reached level 1 limits during charging on battery on port: %s.', self.id, battery_instance.com_port)
                 break
@@ -132,7 +131,6 @@ class TestCase(models.Model):
                 break
             time.sleep(2)
 
-        inverter_instance.rest()
         battery_instance.clear_level_1_error_flag()
         log_test_case.info('TEST CASE ID: %s - CC CHARGE mode on inverter on port %s finished.', self.id, inverter_instance.com_port)
         return True
@@ -145,7 +143,6 @@ class TestCase(models.Model):
         log_test_case.info('Issued invert mode to inverter on port %s.', inverter_instance.com_port)
         
         while (time.time() - start_timestamp) < timeout_seconds:
-            inverter_instance.invert()
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('Reached level 1 limits during inverting on battery on port: %s.', battery_instance.com_port)
                 break
@@ -154,7 +151,6 @@ class TestCase(models.Model):
                 break
             time.sleep(2)
 
-        inverter_instance.rest()
         battery_instance.clear_level_1_error_flag()
         log_test_case.info('CC DISCHARGE mode on inverter on port %s finished.', inverter_instance.com_port)
         return True
