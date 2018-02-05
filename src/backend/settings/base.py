@@ -296,11 +296,7 @@ LOOKUP_TABLE_FILE_NAME = 'test_recipe.csv'
 LOOKUP_TABLE_PATH = os.path.sep.join(['backend', 'settings', LOOKUP_TABLE_FILE_NAME])
 LOOKUP_TABLE = os.path.join(BASE_DIR, LOOKUP_TABLE_PATH)
 
-QUEUES = {}
-for i in range(10):
-    QUEUES['main_com_{}'.format(i)] = {}
-for i in range(10):
-    QUEUES['periodic_com_{}'.format(i)] = {}
+QUEUES = {'main': {}, 'periodic': {}}
 
 GRAFANA_BASE_URL = 'http://localhost:9000/dashboard/db/{}'
 CELLS_VOLTAGE_ROUTE = 'cells-voltage?{url_params}'

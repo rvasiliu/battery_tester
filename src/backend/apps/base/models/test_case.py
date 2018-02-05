@@ -185,6 +185,6 @@ def start_test_task(sender, instance, **kwargs):
     created = kwargs.get('created', False)
     if created:
         # log.info('dispatching main task for test case id: %s', instance.id)
-        main_task_id = main_task.apply_async((instance.id,), queue='main_{}'.format(instance.battery.port))
+        main_task_id = main_task.apply_async((instance.id,), queue='main')
         log_test_case.info('main_task id: %s', main_task_id)
 
