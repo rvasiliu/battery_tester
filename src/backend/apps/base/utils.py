@@ -424,7 +424,6 @@ class VictronMultiplusMK2VCP(object):
                 log_inverter.exception(err)
                 return frame
 
-
     def recover_inverter(self):
         """
             Method should be called when inverter times out. Attempts to reestablish comms with the inverter
@@ -788,7 +787,7 @@ class UsbIssBattery(object):
                           'pack_overtemperature_cells': False,
                           'is_on': False
                           }
-        self.level_2_error_counter = 0 # use this to check persistance of error
+        self.level_2_error_counter = 0  # use this to check persistance of error
         
         self.last_status_update = time.time()
         self.start_timestamp = time.time()
@@ -1045,7 +1044,6 @@ class UsbIssBattery(object):
                              self.pack_variables['cv_max'],
                              self.pack_variables['cv_min'])
             if c_ovp:
-                self.level_2_error_counter += 1 
                 log_battery.info('Cell over-voltage, level 2. Port: %s', self.com_port)
                 self.pack_variables['cell_overvoltage_level_2'] = True
                 self.set_level_2_safety_flag()
@@ -1087,6 +1085,7 @@ class UsbIssBattery(object):
             log_battery.info('SAFETY FLAG 2 SET')
         else:
             log_battery.info('Safety 2 error found, no trigger. Counter is: %s', self.level_2_error_counter)
+
         return True
     
     def clear_level_2_safety_flag(self):
