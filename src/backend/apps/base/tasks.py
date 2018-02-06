@@ -151,9 +151,10 @@ def safety_check(self, battery_id,
                                                          bat_periodic_task_id,
                                                          populate_results_periodic_task_id])
     
+    inverter.inverter_utilities.run_inverter_safety_routine() # inverter safety routine
     battery.battery_utilities.check_safety_level_2()    # run safety check function
 
-    if battery.battery_utilities.pack_variables['is_not_safe_level_2']:
+    if battery.battery_utilities.pack_variables['is_not_safe_level_2'] or inverter.inverter_utilities.inverter_variables['is_not_safe']:
         # stop rig here
         log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
         time.sleep(10)

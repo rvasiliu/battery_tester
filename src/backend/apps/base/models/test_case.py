@@ -165,7 +165,8 @@ class TestCase(models.Model):
         while (time.time() - start_timestamp) < timeout_seconds:
             if battery_instance.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('NO ACTION - Reached level 1 limits during resting battery on port: %s.', battery_instance.com_port)
-            elif self.state == 'FINISHED':
+            
+            if self.state == 'FINISHED':
                 log_test_case.info('Encountered FINISHED command while doing a Rest. Breaking.')
                 break
             time.sleep(2)
