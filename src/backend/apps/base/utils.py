@@ -428,7 +428,7 @@ class VictronMultiplusMK2VCP(object):
 
     def recover_inverter(self):
         """
-            Method should be called when inverter times out. Attempts to reestablish comms with the inverter
+            Method should be called when inverter times out. Attempts to re-establish comms with the inverter
         """
         log_inverter.info('Attempting to recover inverter from timeout... ... ...')
         self.close_coms() # close tty port
@@ -442,7 +442,9 @@ class VictronMultiplusMK2VCP(object):
         """
             Methos will trigger a safety error if the inverter is not responsing for a certain time.
         """
-        self.inverter_variables['is_iresponsive'] =  (self.last_values_update_timestamp - time.time()) > settings.INVERTER_OVER_TIME;
+        time_since_last_update = time.time() - self.last_values_update_timestamp 
+        log_inverter.info('Time since last update on port %s is %s', self.com_port, time_since_last_update)
+        self.inverter_variables['is_iresponsive'] =  time_since_last_update > settings.INVERTER_OVER_TIME;
         if self.inverter_variables['is_iresponsive']:
             self.inverter_variables['is_not_safe'] = True
             log_inverter.info('Inverter on com %s excedded the allowed timeout range. Shutting down.', self.com_port)            
