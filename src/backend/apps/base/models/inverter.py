@@ -25,6 +25,8 @@ class Inverter(models.Model):
 
     setpoint = models.CharField(max_length=10, blank=True, null=True)
     is_on = models.BooleanField(default=False)
+    
+    description = models.CharField(max_length=256, blank=True, null=True)
 
     inverter_pool = models.ForeignKey(InverterPool, related_name='inverters', related_query_name='inverters')
     state = models.CharField(choices=INVERTER_STATES, max_length=32, default='OFFLINE')

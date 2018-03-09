@@ -40,6 +40,8 @@ class Battery(models.Model):
     mosfet_temp = models.CharField(max_length=10, blank=True, null=True)
     pack_temp = models.CharField(max_length=10, blank=True, null=True)
     
+    description = models.CharField(max_length=256, blank=True, null=True)
+    
     cell_overvoltage_level_1 = models.NullBooleanField()
     cell_overvoltage_level_2 = models.NullBooleanField()
     cell_undervoltage_level_1 = models.NullBooleanField()

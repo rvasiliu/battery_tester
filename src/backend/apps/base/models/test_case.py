@@ -95,7 +95,7 @@ class TestCase(models.Model):
                 else:
                     log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type %s', self.id, i)
             except Exception as err:
-                log_test_case.exception('TEST CASE ID: %s - Error on test step %s. Error is %s.', self.id, i, err)
+                log_test_case.exception('TEST CASE ID: %s - Error in test step %s. Error is %s.', self.id, i, err)
 
     def cc_charge(self, start_timestamp=None, timeout_seconds=0, capacity_limit=0):
         """
@@ -105,8 +105,10 @@ class TestCase(models.Model):
         #1. Place inverter in charge mode.
         #2. Every 2 seconds check for battery data and timeout.
         log_test_case.info('In Charge step: inverter instance ID is %s:', id(self.inverter.inverter_utilities))
+        self.inverter.inverter_utilities.prepare_inverter()
         self.inverter.inverter_utilities.charge()
         log_test_case.info('TEST CASE ID: %s -Issued charge mode to inverter on port %s.', self.id, self.inverter.port)
+
         while (time.time() - start_timestamp) < timeout_seconds:
             if self.battery.battery_utilities.pack_variables['is_not_safe_level_1']:
                 log_test_case.info('TEST CASE ID: %s - Reached level 1 limits during charging on battery on port: %s.', self.id, self.battery.port)
@@ -117,6 +119,12 @@ class TestCase(models.Model):
             elif self.state == 'FINISHED':
                 log_test_case.info('TEST CASE ID: %s - Encountered FINISHED command while doing CC Carge. Breaking.', self.id)
                 break
+            
+            if (self.battery.battery_utilities.pack_variables['is_not_safe_level_2'] or
+                    self.inverter.inverter_utilities.inverter_variables['is_not_safe']):
+                log_test_case.info('Encountered STOP through safety level 2 FLAG while doing a Charge. Breaking.')
+                break
+            
             time.sleep(2)
 
         self.battery.battery_utilities.clear_level_1_error_flag()
@@ -127,10 +135,9 @@ class TestCase(models.Model):
         """
             Method encapsulates a cc_dischage step
         """
+        self.inverter.inverter_utilities.prepare_inverter()
         self.inverter.inverter_utilities.invert()
         log_test_case.info('Issued invert mode to inverter on port %s.', self.inverter.port)
-        inverter_instance.invert()
-        log_test_case.info('Issued invert mode to inverter on port %s.', inverter_instance.com_port)
 
         while (time.time() - start_timestamp) < timeout_seconds:
             if self.battery.battery_utilities.pack_variables['is_not_safe_level_1']:
@@ -139,6 +146,12 @@ class TestCase(models.Model):
             elif self.state == 'FINISHED':
                 log_test_case.info('Encountered FINISHED command while doing CC Discharge. Breaking.')
                 break
+            
+            if (self.battery.battery_utilities.pack_variables['is_not_safe_level_2'] or
+                    self.inverter.inverter_utilities.inverter_variables['is_not_safe']):
+                log_test_case.info('Encountered STOP through safety level 2 FLAG while doing a Discharge. Breaking.')
+                break
+            
             time.sleep(2)
 
         self.battery.battery_utilities.clear_level_1_error_flag()
@@ -149,6 +162,7 @@ class TestCase(models.Model):
         """
             Method encapsulates a rest step
         """
+        self.inverter.inverter_utilities.prepare_inverter()
         self.inverter.inverter_utilities.rest()
         log_test_case.info('Issued rest mode to inverter on port %s.', self.inverter.port)
 
@@ -157,6 +171,10 @@ class TestCase(models.Model):
                 log_test_case.info('NO ACTION - Reached level 1 limits during resting battery on port: %s.', self.battery.port)
             elif self.state == 'FINISHED':
                 log_test_case.info('Encountered FINISHED command while doing a Rest. Breaking.')
+
+            if (self.battery.battery_utilities.pack_variables['is_not_safe_level_2'] or
+                    self.inverter.inverter_utilities.inverter_variables['is_not_safe']):
+                log_test_case.info('Encountered STOP through safety level 2 FLAG while doing a Rest. Breaking.')
                 break
             time.sleep(2)
 
