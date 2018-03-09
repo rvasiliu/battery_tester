@@ -49,10 +49,13 @@ class Inverter(models.Model):
 
     def get_inverter_utilities(self, inv_utility_class):
         if self.port in inv_utility_class.inverter_instances:
-            return inv_utility_class.inverter_instances[self.port]
+            inv_instance = inv_utility_class.inverter_instances[self.port]
+            log.warning('returned inverter_instance: %s for port %s', id(inv_instance), self.port)
+            return inv_instance
         # if not, create it and store it on the class attribute
         victron_instance = inv_utility_class(self.port)
         inv_utility_class.inverter_instances[self.port] = victron_instance
+        log.warning('returned inverter_instance: %s for port %s', id(victron_instance), self.port)
         return victron_instance
 
     @property
