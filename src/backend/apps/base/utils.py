@@ -43,7 +43,9 @@ class VictronMultiplusMK2VCP(object):
             'ac_current': 0,
             'ac_voltage': 0,
             'dc_capacity': 0, #Amps Hour (Ah)
-            'dc_energy': 0 #Wh 
+            'dc_energy': 0, #Wh 
+            'is_iresponsive': False,
+            'is_not_safe': False
         }
 
         self.com_port = com_port
@@ -207,7 +209,7 @@ class VictronMultiplusMK2VCP(object):
             elif state == 1:
                 switch_state = b'\x03'
             else:
-                switch_state = b'\x04'
+                switch_state = b'\x01'
 
             message = b'\x09\xff\x53'
             message = message + switch_state
@@ -412,7 +414,7 @@ class VictronMultiplusMK2VCP(object):
                     frame['timeout'] = True
                     self.inverter_timeout_counter += 1
                     log_inverter.warning('Ended through timeout. Messages received: %s', frame)
-                    if self.inverter_timeout_counter > 5:
+                    if self.inverter_timeout_counter > settings.INVERTER_TIMEOUT_ATTEMPT_NUMBER:
                         self.recover_inverter()
                         self.inverter_timeout_counter = 0
                     return frame
@@ -426,13 +428,26 @@ class VictronMultiplusMK2VCP(object):
 
     def recover_inverter(self):
         """
-            Method should be called when inverter times out. Attempts to reestablish comms with the inverter
+            Method should be called when inverter times out. Attempts to re-establish comms with the inverter
         """
         log_inverter.info('Attempting to recover inverter from timeout... ... ...')
-        self.close_coms()
-        self.open_comms()
-        self.prepare_inverter()
+        self.close_coms() # close tty port
+        self.open_comms() # open tty port
+        self.prepare_inverter() # run prepare inverter method (reset MK2)
+        self.send_state(1) # switch state to 1 (ON)
+        
         return True
+    
+    def run_inverter_safety_routine(self):
+        """
+            Methos will trigger a safety error if the inverter is not responsing for a certain time.
+        """
+        time_since_last_update = time.time() - self.last_values_update_timestamp 
+        log_inverter.info('Time since last update on port %s is %s', self.com_port, time_since_last_update)
+        self.inverter_variables['is_iresponsive'] =  time_since_last_update > settings.INVERTER_OVER_TIME;
+        if self.inverter_variables['is_iresponsive']:
+            self.inverter_variables['is_not_safe'] = True
+            log_inverter.info('Inverter on com %s excedded the allowed timeout range. Shutting down.', self.com_port)            
             
             
 class VictronMultiplusMK2VCPFake(object):
@@ -787,8 +802,11 @@ class UsbIssBattery(object):
                           'pack_overcurrent': False,
                           'pack_overtemperature_mosfets': False,
                           'pack_overtemperature_cells': False,
-                          'is_on': False
+                          'is_on': False,
+                          'is_iresponsive': False
+                          
                           }
+        
         self.level_2_error_counter = 0  # use this to check persistance of error
         
         self.last_status_update = time.time()
@@ -816,13 +834,13 @@ class UsbIssBattery(object):
         try:
             message = b'\x5A\x01'
             self.serial_handle.write(message)
-            time.sleep(0.5)
+            time.sleep(0.2)
             self.serial_handle.read(10)
 
             # Setting the mode
             I2C_mode_message = b'\x5A\x02\x60\x04'
             self.serial_handle.write(I2C_mode_message)
-            time.sleep(0.5)
+            time.sleep(0.2)
             self.serial_handle.read(10)
             log_battery.info('Configure the ISS adapter for com: %s', self.com_port)
             return True
@@ -848,6 +866,13 @@ class UsbIssBattery(object):
         except Exception as err:
             log_battery.exception('Error when turning pack on port: %s. Pack serial number: %s', self.com_port, self.serial_number)
             return False
+        
+    def open_coms(self):
+        try:
+            self.serial_handle.open()
+            log_battery.info('Openned battery port %s.', self.com_port)
+        except Exception as err:
+            log_battery.exception('Could not open com port %s, reason is %s', self.com_port, err)
 
     def close_coms(self):
         """
@@ -895,6 +920,7 @@ class UsbIssBattery(object):
             Call this function to update all the model attributes that are read from the battery.
         """
         try:
+            self.turn_pack_on()
             if not self.get_pack_status():
                 log_battery.info('Either CRC error or exception when reading from I2C - values discarded. Port: %s', self.com_port)
                 return {}
@@ -994,7 +1020,7 @@ class UsbIssBattery(object):
         """
             Method returns True if everything OK. False if the level 1 limits have been exceeded.
         """
-        if self.last_status_update < self.start_timestamp + 10:
+        if time.time() < self.start_timestamp + 10:
             #There has been no update of the cell readings since the start of the test. 
             log_battery.info('Attempted to run Safety Level 1 routine - battery data will not update in the first 10 seconds of the test.')
             return True 
@@ -1002,10 +1028,10 @@ class UsbIssBattery(object):
         try:
             c_ovp = float(self.pack_variables['cv_max']) > settings.BATTERY_CELL_OVP_LEVEL_1
             c_uvp = float(self.pack_variables['cv_min']) < settings.BATTERY_CELL_UVP_LEVEL_1
-            log_battery.info('Verified level 1 safety conditions on com %s. Max Cell is: %s, Min Cell is: %s.', 
-                             self.com_port, 
-                             self.pack_variables['cv_max'],
-                             self.pack_variables['cv_min'])
+            #log_battery.info('Verified level 1 safety conditions on com %s. Max Cell is: %s, Min Cell is: %s.', 
+            #                 self.com_port, 
+            #                 self.pack_variables['cv_max'],
+            #                 self.pack_variables['cv_min'])
                             
             if c_uvp:
                 log_battery.info('Cell undervoltage detected, level 1 on port: %s', self.com_port)
@@ -1018,7 +1044,7 @@ class UsbIssBattery(object):
                 self.pack_variables['is_not_safe_level_1'] = True
                 return False
             else:
-                log_battery.info('No level 1 protection triggered on port: %s.', self.com_port)
+                #log_battery.info('No level 1 protection triggered on port: %s.', self.com_port)
                 return True
         except Exception as err:
             log_battery.exception('Exception in checking cell safety level 1 on port %s. Exception is: %s', self.com_port, err)
@@ -1029,7 +1055,7 @@ class UsbIssBattery(object):
             Method return True if everything OK. False if a test stop trigger should be issued.
         """
         
-        if self.last_status_update < self.start_timestamp + 10:
+        if time.time() < self.start_timestamp + 10:
             #There has been no update of the cell readings since the start of the test. 
             log_battery.info('Attempted to run Safety Level 2 routine - battery data will not update in the first 10 seconds of the test.')
             return True 
@@ -1041,10 +1067,16 @@ class UsbIssBattery(object):
             ovt_mosfet = float(self.pack_variables['mosfet_temp']) > settings.MOSFETS_OVERTEMPERATURE
             ovt_cells = float(self.pack_variables['pack_temp']) > settings.CELLS_OVERTEMPERATURE
             
-            log_battery.info('Verified level 2 safety conditions on com %s. Max Cell is: %s, Min Cell is: %s.', 
+            time_since_last_response = time.time() - self.last_status_update
+            over_time = time_since_last_response > settings.BATTERY_OVER_TIME
+            
+            log_battery.info('VER level 2 on com %s. Max Cell is: %s, Min Cell is: %s. Time since last: %s', 
                              self.com_port, 
                              self.pack_variables['cv_max'],
-                             self.pack_variables['cv_min'])
+                             self.pack_variables['cv_min'],
+                             time_since_last_response)
+            
+            
             if c_ovp:
                 log_battery.info('Cell over-voltage, level 2. Port: %s', self.com_port)
                 self.pack_variables['cell_overvoltage_level_2'] = True
@@ -1070,8 +1102,12 @@ class UsbIssBattery(object):
                 self.pack_variables['pack_overtemperature_cells'] = True
                 self.set_level_2_safety_flag()
                 return False
+            elif over_time:
+                log_battery.info('Pack timeout responding on port %s', self.com_port)
+                self.pack_variables['is_iresponsive'] = True
+                self.set_level_2_safety_flag()
             else:
-                log_battery.info('No level 2 protection triggered on port: %s', self.com_port)
+                #log_battery.info('No level 2 protection triggered on port: %s', self.com_port)
                 return True
         except Exception as err:
             log_battery.exception('Error in checking safety level 2 on port %s. Exception is: %s', self.com_port, err)
@@ -1082,7 +1118,7 @@ class UsbIssBattery(object):
             Method will set the level 2 safety flag
         """
         self.level_2_error_counter += 1 # increment error counter
-        if self.level_2_error_counter > 5: 
+        if self.level_2_error_counter > settings.BATTERY_TIMEOUT_ATTEMPT_NUMBER: 
             self.pack_variables['is_not_safe_level_2'] = True
             log_battery.info('SAFETY FLAG 2 SET')
         else:

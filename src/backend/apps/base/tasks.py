@@ -151,11 +151,13 @@ def safety_check(self, battery_id,
                                                          bat_periodic_task_id,
                                                          populate_results_periodic_task_id])
     
+    #inverter.inverter_utilities.run_inverter_safety_routine() # inverter safety routine
     battery.battery_utilities.check_safety_level_2()    # run safety check function
 
-    if battery.battery_utilities.pack_variables['is_not_safe_level_2']:
+    if battery.battery_utilities.pack_variables['is_not_safe_level_2'] or inverter.inverter_utilities.inverter_variables['is_not_safe']:
         # stop rig here
         log_main.info('TEST CASE ID: %s - Safety LEVEL 2 triggered in safety_check task.', test_case.id)
+        test_case.state = 'FINISHED'
         time.sleep(10)
         inverter.remove_inverter_utilities()
         battery.remove_battery_utilities()
@@ -170,7 +172,7 @@ def safety_check(self, battery_id,
         
         log_main.info('TEST CASE ID: %s - Setting statuses and result for test_case.', test_case_id)
         # setting test_case
-        test_case.state = 'FINISHED'
+        
         test_case.finished = timezone.now() + datetime.timedelta(seconds=60)
         test_case.graph = calculate_graph_link(test_case.id, test_case.created, test_case.finished)
         test_case.result = 'FAILED'
@@ -427,13 +429,16 @@ def main_task(self, test_case_id):
     # victron_inv.stop()
 
     # stop all periodic tasks when the main finishes
-    safety_check_periodic_task.delete()
-    inv_periodic_task.delete()
-    bat_periodic_task.delete()
-    populate_results_periodic_task.delete()
-    time.sleep(10)
-    inverter.remove_inverter_utilities()
-    battery.remove_battery_utilities()
+    try:
+        safety_check_periodic_task.delete()
+        inv_periodic_task.delete()
+        bat_periodic_task.delete()
+        populate_results_periodic_task.delete()
+        time.sleep(10)
+        inverter.remove_inverter_utilities()
+        battery.remove_battery_utilities()
+    except Exception as err:
+        log_main.info('Was unable to delete periodc tasks from main task. Reason: %s', err)
 
     test_case.state = 'FINISHED'
     test_case.finished = timezone.now() + datetime.timedelta(seconds=60)
