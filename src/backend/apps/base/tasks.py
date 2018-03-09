@@ -341,9 +341,6 @@ def main_task(self, test_case_id):
     s5_schedule, created = IntervalSchedule.objects.get_or_create(every=5, period=IntervalSchedule.SECONDS)
     s10_schedule, created = IntervalSchedule.objects.get_or_create(every=10, period=IntervalSchedule.SECONDS)
     s60_schedule, created = IntervalSchedule.objects.get_or_create(every=60, period=IntervalSchedule.SECONDS)
-    
-    val = -200  # inverter.inverter_utilities.send_setpoint()
-    log_main.info('send_setpoint returns %s', val)
 
     # create the send_inverter_setpoint periodic task ###############
     kwargs = {

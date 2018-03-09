@@ -44,16 +44,14 @@ class TestCase(models.Model):
 
     def run_test(self):
         df_recipe = self.load_config()
-        battery_instance = self.battery.battery_utilities
-        inverter_instance = self.inverter.inverter_utilities
         
-        log_test_case.info('in run test: Battery instance ID is: %s', id(battery_instance))
-        log_test_case.info('in run test: Inverter instance ID is %s', id(inverter_instance))
+        log_test_case.info('in run test: Battery instance ID is: %s', id(self.battery.battery_utilities))
+        log_test_case.info('in run test: Inverter instance ID is %s', id(self.inverter.inverter_utilities))
         
         from ..models import TestCaseEvent
         for i in range(0, len(df_recipe)):
             log_test_case.info('TEST CASE ID: %s - Proceeding to step %s from the test RECIPE.', self.id, i)
-            inverter_instance.inverter_variables['dc_capacity'] = 0
+            self.inverter.inverter_utilities.inverter_variables['dc_capacity'] = 0
             try:
                 if df_recipe.step_type[i] == 'CC Charge':
                     log_test_case.info('TEST CASE ID: %s - Attempting step type %s.', self.id, df_recipe.step_type[i])
@@ -65,9 +63,7 @@ class TestCase(models.Model):
                         value=settings.CHARGING_SETPOINT,
                         timestamp=timezone.now(),
                     )
-                    self.cc_charge(battery_instance=battery_instance,
-                                   inverter_instance=inverter_instance,
-                                   start_timestamp=time.time(),
+                    self.cc_charge(start_timestamp=time.time(),
                                    timeout_seconds=df_recipe.timeout_seconds[i],
                                    capacity_limit=df_recipe.capacity_limit[i])
 
@@ -81,9 +77,7 @@ class TestCase(models.Model):
                         value=settings.INVERTING_SETPOINT,
                         timestamp=timezone.now(),
                     )
-                    self.cc_discharge(battery_instance=battery_instance,
-                                      inverter_instance=inverter_instance,
-                                      start_timestamp=time.time(),
+                    self.cc_discharge(start_timestamp=time.time(),
                                       timeout_seconds=df_recipe.timeout_seconds[i])
 
                 elif df_recipe.step_type[i] == 'Rest':
@@ -96,34 +90,28 @@ class TestCase(models.Model):
                         value=0,
                         timestamp=timezone.now(),
                     )
-                    self.rest(battery_instance=battery_instance,
-                              inverter_instance=inverter_instance,
-                              start_timestamp=time.time(),
+                    self.rest(start_timestamp=time.time(),
                               timeout_seconds=df_recipe.timeout_seconds[i])
                 else:
                     log_test_case.info('TEST CASE ID: %s - Unrecognised Step Type %s', self.id, i)
             except Exception as err:
                 log_test_case.exception('TEST CASE ID: %s - Error on test step %s. Error is %s.', self.id, i, err)
 
-    def cc_charge(self, battery_instance=None,
-                  inverter_instance=None,
-                  start_timestamp=None,
-                  timeout_seconds=0,
-                  capacity_limit=0):
+    def cc_charge(self, start_timestamp=None, timeout_seconds=0, capacity_limit=0):
         """
             Method encapsulates a cc_charge step
         """
         #TODO
         #1. Place inverter in charge mode.
         #2. Every 2 seconds check for battery data and timeout.
-        log_test_case.info('In Charge step: inverter instance ID is %s:', id(inverter_instance))
-        inverter_instance.charge()
-        log_test_case.info('TEST CASE ID: %s -Issued charge mode to inverter on port %s.', self.id, inverter_instance.com_port)
+        log_test_case.info('In Charge step: inverter instance ID is %s:', id(self.inverter.inverter_utilities))
+        self.inverter.inverter_utilities.charge()
+        log_test_case.info('TEST CASE ID: %s -Issued charge mode to inverter on port %s.', self.id, self.inverter.port)
         while (time.time() - start_timestamp) < timeout_seconds:
-            if battery_instance.pack_variables['is_not_safe_level_1']:
-                log_test_case.info('TEST CASE ID: %s - Reached level 1 limits during charging on battery on port: %s.', self.id, battery_instance.com_port)
+            if self.battery.battery_utilities.pack_variables['is_not_safe_level_1']:
+                log_test_case.info('TEST CASE ID: %s - Reached level 1 limits during charging on battery on port: %s.', self.id, self.battery.port)
                 break
-            elif inverter_instance.inverter_variables['dc_capacity'] > capacity_limit:
+            elif self.inverter.inverter_utilities.inverter_variables['dc_capacity'] > capacity_limit:
                 log_test_case.info('TEST CASE ID: %s - Exceeded capacity limit in CC charge', self.id)
                 break
             elif self.state == 'FINISHED':
@@ -131,48 +119,48 @@ class TestCase(models.Model):
                 break
             time.sleep(2)
 
-        battery_instance.clear_level_1_error_flag()
-        log_test_case.info('TEST CASE ID: %s - CC CHARGE mode on inverter on port %s finished.', self.id, inverter_instance.com_port)
+        self.battery.battery_utilities.clear_level_1_error_flag()
+        log_test_case.info('TEST CASE ID: %s - CC CHARGE mode on inverter on port %s finished.', self.id, self.inverter.port)
         return True
 
-    def cc_discharge(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds=0):
+    def cc_discharge(self, start_timestamp, timeout_seconds=0):
         """
             Method encapsulates a cc_dischage step
         """
-        inverter_instance.invert()
-        log_test_case.info('Issued invert mode to inverter on port %s.', inverter_instance.com_port)
+        self.inverter.inverter_utilities.invert()
+        log_test_case.info('Issued invert mode to inverter on port %s.', self.inverter.port)
         
         while (time.time() - start_timestamp) < timeout_seconds:
-            if battery_instance.pack_variables['is_not_safe_level_1']:
-                log_test_case.info('Reached level 1 limits during inverting on battery on port: %s.', battery_instance.com_port)
+            if self.battery.battery_utilities.pack_variables['is_not_safe_level_1']:
+                log_test_case.info('Reached level 1 limits during inverting on battery on port: %s.', self.battery.port)
                 break
             elif self.state == 'FINISHED':
                 log_test_case.info('Encountered FINISHED command while doing CC Discharge. Breaking.')
                 break
             time.sleep(2)
 
-        battery_instance.clear_level_1_error_flag()
-        log_test_case.info('CC DISCHARGE mode on inverter on port %s finished.', inverter_instance.com_port)
+        self.battery.battery_utilities.clear_level_1_error_flag()
+        log_test_case.info('CC DISCHARGE mode on inverter on port %s finished.', self.inverter.port)
         return True
 
-    def rest(self, battery_instance=None, inverter_instance=None, start_timestamp=None, timeout_seconds=0):
+    def rest(self, start_timestamp, timeout_seconds=0):
         """
             Method encapsulates a rest step
         """
-        inverter_instance.rest()
-        log_test_case.info('Issued rest mode to inverter on port %s.', inverter_instance.com_port)
+        self.inverter.inverter_utilities.rest()
+        log_test_case.info('Issued rest mode to inverter on port %s.', self.inverter.port)
         
         while (time.time() - start_timestamp) < timeout_seconds:
-            if battery_instance.pack_variables['is_not_safe_level_1']:
-                log_test_case.info('NO ACTION - Reached level 1 limits during resting battery on port: %s.', battery_instance.com_port)
+            if self.battery.battery_utilities.pack_variables['is_not_safe_level_1']:
+                log_test_case.info('NO ACTION - Reached level 1 limits during resting battery on port: %s.', self.battery.port)
             elif self.state == 'FINISHED':
                 log_test_case.info('Encountered FINISHED command while doing a Rest. Breaking.')
                 break
             time.sleep(2)
 
-        inverter_instance.rest()
-        battery_instance.clear_level_1_error_flag()
-        log_test_case.info('REST mode on inverter on port %s finished.', inverter_instance.com_port)
+        self.inverter.inverter_utilities.rest()
+        self.battery.battery_utilities.clear_level_1_error_flag()
+        log_test_case.info('REST mode on inverter on port %s finished.', self.inverter.port)
         return True
 
 

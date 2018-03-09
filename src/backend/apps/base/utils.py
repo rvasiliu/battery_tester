@@ -623,7 +623,7 @@ class VictronMultiplusMK2VCPFake(object):
         try:
             self.set_point = settings.CHARGING_SETPOINT
             # self.send_state(1)
-            log_inverter.info('Charge mode set on inverter.')
+            log_inverter.info('Charge mode set on inverter: %s', self.set_point)
             return True
         except Exception as err:
             log_inverter.exception('Cannot set charge mode on port %s. Exception is: %s', self.com_port, err)
@@ -638,6 +638,7 @@ class VictronMultiplusMK2VCPFake(object):
         try:
             self.set_point = settings.INVERTING_SETPOINT
             # self.send_state(1)
+            log_inverter.info('Invert mode set on inverter: %s', self.set_point)
             return True
         except Exception as err:
             log_inverter.exception('Cannot set invert mode on port %s. Exception is: %s', self.com_port, err)
@@ -653,6 +654,7 @@ class VictronMultiplusMK2VCPFake(object):
             self.set_point = 0
             self.set_point_timestamp = time.time()
             # self.send_state(1)
+            log_inverter.info('Rest mode set on inverter: %s', self.set_point)
             return True
         except Exception as err:
             msg = 'Cannot set rest mode. The inverter on port {} is still running? Exception is: {}'.format(
