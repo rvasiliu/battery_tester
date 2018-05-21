@@ -61,7 +61,8 @@ Long running tasks must be distributed each on a thread(main tasks). The other t
   
   * there must be one worker that deals with the main tasks(concurency=no of main tasks, use -Ofair to avoid prefetch). All main tasks can be submitted to one Q)
   
-  ```celery -A backend worker --app=backend.celery:app -l info -c 10 -Ofair --pool=eventlet -Q main -n worker_main@%h```
+ 
+  ```celery -A backend worker --app=backend.celery:app -l info -c 200 -Ofair --pool=eventlet -Q main,periodic```
   
   * there must be one worker for the periodic tasks. Once again, -Ofair has to be used to avoid prefetching. Periodic tasks must be processed the moment they are scheduled.
   
